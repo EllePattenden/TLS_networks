@@ -1,0 +1,490 @@
+---
+title: "replicate Min et al. Fig 3"
+author: "Elle Pattenden"
+date: "07/04/2021"
+output: html_document
+---
+# Overview
+This script explores the purported relationships between rewiring probability and resoure inflow on a population of cooperating agents' resistance to invasion by a lone defector in the TLS model (2012; 2017) with network dynamics described by Min et al. (2018). They found that increasing the probability of network rewiring had a positive effect in networks with low average dgree (k = 15), with minimal impact in relatively high degree networks (k = 90) except when close to 1. However, *Min et al. created a dependancy (i.e., negative relationnship) between the probability of strategy updating and probability of network rewiring*. Here, we examine what happens when the probability of network rewiring is manipulated independently. 
+
+## Clustering stopping rule
+One way that this model can reach a mixed equilibrium is when defectors and cooperators form seperate communities. In the absence of mutation there is no way to get out of this, so need a stopping rule to cut down on run time. 
+
+
+```{r}
+# install.packages(c("data.table", "tidyverse", "igraph", "rlist"))
+# library(data.table)
+# library(tidyverse)
+# library(igraph)
+# library(rlist)
+rm(list = ls())  # clear environment 
+options(scipen=999)  # stop printing in scientific notation !
+set.seed(54321)  # need to swap if running in parallel ! 
+
+# --------------------------- Parameters -------------------------------------#
+
+# Fixed 
+params <- setDT(data.frame(
+  N = 100,   # number of agents 
+  # Resource related
+  initi_R = 50,    # initial size of resource
+  max_R = 200,    # resource carrying capacity
+  d = 50,         # natural discharge rate
+  # Harvesting/production 
+  E_opt = 0.483,  # optimal effort (water)
+  q = 1,          # technology quotient 
+  w = 15,         # opportunity cost per unit effort 
+  alpha = 0.6,    # Cobb-Douglas parameters
+  beta = 0.2,     # with a + b < 1 
+  gamma = 10,     # for diminishing returns to scale 
+  # Ostracism (Gompertz function)
+  h = .17,       # maximum sanctioning (asymptote)      # NOTE - All papers bar Min et al. use 
+                                                         # ~.333 !!! 
+  t = -150,       # sanctioning effectiveness threshold
+  g = -10,        # sanctioning growth rate
+  # Other 
+  max_t = 50000,   # max time steps in each block of the simulation i.e.,  
+                   # time for system to equilibrate; 50,000 in TLS et al. 
+                   # (2016)
+  p_coop = 0.99,   # initial proportion of cooperators
+  mu = 3.9,        # "cheating multiplier"; 0 < mu < 3.9, where 3.9 gives Nash
+  negative_utilities = TRUE,   # can agent utilities be negative? logical;
+                   #  false = they can't. Shulter et al. said no but you need
+                   # them here to get differences between cooperators and
+                   # defectors with small resource inflows. 
+  update_prob = 0.01,  # proportion of agents comparing utilities in each tick 
+                   # referred to as "strategy updating probability" in some
+  network_type = "ER_random",   # the initial network structure, with options:
+                   # "ER_random"
+  scheduling_dynamics = "seperate",  # how tie formation plays out, with 
+                  # options: "min_method", "seperate"
+                  # For scheduling dynamics == 'seperate', the probability of 
+                  # rewiring probability is determined by rho while the 
+                  # probability for strategy updating is proportional to the 
+                  # payoff differences. 
+  tie_strat = "min_method"  # how do agent's rewire their networks 
+                  # options: "min_method", "risk_hypoth"
+))
+params[, "e_coop" := E_opt / N ]        # effort for cooperators 
+params[, "e_defect" := e_coop *  mu]    # defector's effort
+# params[, "e_defect" := 1.826 / N]       # ' ' if you want the rounding to be exact 
+
+# Systematically Varied 
+replicate <- seq(1, 30, 1)    # 30 reps of each
+degree <- c(15, 90)           # comparing average degree of 15 and 19
+resource_inflow <- seq(10, 60, 1)  # across c [10:60]
+rho <- sort(seq(0, 1, 0.01), decreasing = TRUE) # with rho [0:1]
+ 
+# # #  FOR DE-BUGGING
+# replicate <-  1
+# degree <- c(15)           # comparing average degree of 15 and 19
+# resource_inflow <-  seq(30, 60, 5)
+# rho <- 0
+
+combos <- setDT(expand.grid(replicate, degree, resource_inflow, rho))
+setnames(combos, new = c("replicate", "degree", "resource_inflow", "rho"))
+rm(list = c("replicate", "degree", "resource_inflow", "rho"))
+
+# Stick in one big data.table 
+combo <- cbind(combos, params)    # each row has the parameter values for a run 
+# combo[, "row" := .I]
+
+rm(list = c("combos", "params"))  # keep it clean(-ish) 
+
+# ----------------------- Set-Up Procedures ----------------------------------#
+
+# Used to create a population of agents             
+agent_generator <- function(N,               # population size       
+                            initial_coop,    # initial proportion cooperating
+                            optimal_effort,  # optimal group effort
+                            mu) {            # effort multiplier for defectors 
+  agents <- setDT(data.frame(id = 1:N,       # tracking each agent's id,
+                             strategy = 0,   # strategy (1 = cooperate)
+                             effort = 0,     # effort level
+                             payoff = 0,     # payoff 
+                             utility = 0     # utility 
+  ))
+  set(agents,                                 # initialise strategies by  
+      sample(nrow(agents), initial_coop * N), # randomly setting cooperators
+      "strategy", 1)                          # strategy ==  1
+  e_coop <- optimal_effort / N                # set efforts 
+  e_defect <- e_coop * mu
+  agents[, effort := fifelse(strategy == 0, e_defect, e_coop)]
+  return(agents)
+}
+
+# Create initial network 
+network_generator <- function(network_type, N, degree) { 
+  if (network_type == "ER_random") {   
+    network <- as.matrix(as_adjacency_matrix( # get an Erdos-Renyi random graph
+      sample_gnm(                 # using the "gnm" method
+        N,                        # number of nodes 
+        (N * degree) / 2,         # total number of ties 
+        directed = FALSE)         # ( 'degree' = average degree for all nodes )
+    ))
+  }
+  return(network)
+}
+
+# --------------------------- Set Up -----------------------------------------#
+
+one_run <- function(     # reading in row of values in sequence from combo
+  replicate, degree, resource_inflow, rho, N, initi_R, max_R, d, E_opt, q, w,
+  alpha, beta, gamma, h, t, g, max_t, p_coop, mu, negative_utilities, 
+  update_prob, network_type, scheduling_dynamics, tie_strat, e_coop, e_defect
+  ) {   
+  
+  # get population of agents 
+  agents_own <- agent_generator(N, p_coop, E_opt, mu)
+  # and their initial social network 
+  network <- network_generator(network_type, N, degree)
+
+  # working variables
+  c <- resource_inflow   # stick to calling this c 
+  R <- initi_R    # current size of the resource    
+  E_total <- agents_own[, sum(effort)]   # group's total effort 
+  p_coop_i <-  agents_own[, sum(strategy)] / N   # proportion agents 
+                                                 # cooperating now
+  repeats <- update_prob * N    # agents (potentially) comparing strategies in 
+                                # each tick; defaults to 1
+ 
+  print_ticks <- c(1, seq(0, max_t, by = 1000))  # used for storing data every "by" rounds 
+                                                 # + debugging
+  
+  # DEBUGGING READ OUTS
+  # # print(paste0("New run! With inflow, c, = ", c))
+  # # print(paste0("and an initial size of  ", R))
+  # # print(paste0("the initial total effort was ", E_total, ", noting E_opt is .483"))
+  # # print("    ")
+  
+  # functions
+  cobb_douglas <- 
+    function(E_total, R, alpha, beta, gamma) {           #  Cobb-Douglas
+      product <- gamma * (E_total ^ alpha) * (R ^ beta)  #  for production
+      return(product)
+    }
+  resource_dynamics <- 
+    function(R, c, d, max_R, q, E_total) {     # Resource dynamics 
+      new <- R + (c - ( d * ( (R / max_R ) ^ 2 ) )) - (q * E_total * R ) 
+      return(new) 
+    }
+  ostracism <- 
+    function (h, t, g, p_coop_i) {        # Gompertz for ostracism
+      o <- h * exp(t * exp(g * p_coop_i))       
+      return(o)
+    } 
+  
+  # for storing output 
+  network_d <- array(0, dim = c(N, N, length(print_ticks)))
+  node_list <- agents_own[, c("id", "strategy")][, tick := 0]
+  output <- setDT(data.frame(matrix(0, max_t, 9)))
+  setnames(
+    output, new = c(   # with cols: 
+      "prop_coop",     # (1) proportion of cooperators,
+      "R_now",         # (2) resource size after harvesting,
+      "magnitude_ostracism",  # (3) ostracism cost
+      "coop_U",        # (4) cooperator utility / payoff
+      "defector_pi",   # (5) defector payoff
+      "defector_U",    # (6) defector utility,
+      "total_e",       # (7) total effort,
+      "total_harvest",  # (8) total product for round,
+      "strategy_updated"  # (9) strategy updated? 1 = true, 0 = false 
+    )) 
+  
+  # Go procedure 
+  for (tick in 1:max_t) {
+    
+    # calculate current proportion of agents cooperating 
+    p_coop_i <-  agents_own[, sum(strategy)] / N 
+    
+    # calculate the total group effort
+    E_total <- agents_own[, sum(effort)]
+
+    # update the state of the resource to reflect this 
+    R <- resource_dynamics(R, c, d, max_R, q, E_total)  
+    
+    # calculate the groups total product
+    total_product <- cobb_douglas(E_total, R, alpha, beta, gamma)
+    
+    # calculate individual payoffs 
+    agents_own[, payoff := 
+                 ((effort / E_total) * total_product) - ( w * effort)]
+    
+    # store utility for cooperators (same as payoff)
+    agents_own[strategy == 1, utility := payoff]
+    
+    # calculate utility for defectors 
+    defectors <- agents_own[strategy == 0, id]  # locate defectors
+    ostracism_amount <- vector(0, mode = "numeric")
+    if (length(defectors) != 0 && 
+        length(defectors) != N ) {   # only run if pop isn't at equ.
+      payoffs <- unique(agents_own[, payoff, by = strategy])  # extract payoff for each strat.
+      defector_adv <- ( payoffs[strategy == 0, payoff] - 
+                          payoffs[strategy == 1, payoff] ) / payoffs[strategy == 0, payoff]
+      
+      ostracism_amount <- numeric(length(defectors))   
+      util <- 0
+      for (d in defectors) {                       # loop through and 
+        partners <- which(network[d, ] == 1)       # find partners 
+        n_coop <- nrow(agents_own[id %in% partners & strategy == 1]) # count number cooperating
+        ostracism_i <- ostracism(                  # ostracism is det. by the 
+          # h, t, g, n_coop                         # num. of partners cooperating
+          # h, t, g, (n_coop / N)           # prop. of pop directely tied to who are coop-ing
+          h, t, g, (n_coop / length(partners))    # prop of partners cooperating
+          # h, t, g, (n_coop / degree)    # prop of partners cooperating
+        )
+        util <- agents_own[d, payoff] - (ostracism_i * defector_adv)   # track utility
+        agents_own[d, utility := util]             # update
+        ostracism_amount[d] <- (ostracism_i * defector_adv)    # add to runninng tally
+      }
+    }
+    
+    if (negative_utilities == FALSE) {                           # get rid of 
+      agents_own[, utility := fifelse(utility < 0, 0, utility)]  #  negatives 
+    }
+    
+    # strategy updating (+ rewiring for scheduling_dynamics == "min_method")
+    strat_switched <- vector(length = repeats, mode = "numeric")
+    for (r in 1:repeats) {
+      agent_i <- sample(nrow(agents_own), 1)     # randomly select focal agent i 
+      strat_i <- agents_own[agent_i, strategy]   # record their current strategy
+      mates <- which(network[agent_i, ] == 1)  # get list of possible partners 
+      if (length(mates) != 0) {    # as long as i >= 1 tie 
+        agent_j <- sample(mates, 1)              # pick one 
+        strat_j <- agents_own[agent_j, strategy]   # record their strat
+        if (strat_i != strat_j) {
+          utility_i <- agents_own[agent_i, utility]  # get utilities
+          utility_j <- agents_own[agent_j, utility]
+          if (utility_i != 0 || utility_j != 0) {    # avoid errors / 0
+            utility_diff <-  (utility_i - 
+                                utility_j ) / (abs(utility_i) + abs(utility_j))
+            
+            if (scheduling_dynamics == "min_method") {
+              # update strategy with prob rho, otherwise rewire network (p = 1 - rho)
+              if (runif(1,0,1) < rho) {      # decide which route to go down  
+                if (utility_diff < 0 && runif(1,0,1) < abs(utility_diff) ) {  
+                  agents_own[agent_i, strategy := strat_j]             # strategy updating
+                  agents_own[strategy == 0, effort := e_defect]
+                  agents_own[strategy == 1, effort := e_coop]
+                  strat_switched[r] <- 1
+                } 
+              } else {   # tie rewiring
+                if (strat_i == 1 && 
+                    strat_j == 0) {   # only happens when i coops and j defects
+                  network[agent_i, agent_j] <- 0      # sever tie
+                  options <- setdiff(seq(1, 100, 1), 
+                                     c(agent_i, agent_j, mates)) # potentials
+                  new_tie <- sample(options, 1)           # make tie randomly
+                  network[agent_i, new_tie] <- 1
+                }
+              }
+            }
+            if (scheduling_dynamics == "seperate") {
+              if (utility_diff < 0 && 
+                  runif(1,0,1) < abs(utility_diff) ) {
+                
+                # print(paste0("a ", strat_i, " agent swapped!"))
+                # print(paste0("It's round, ", tick, "and ... "))
+                # print(paste0("the size of the resource after harvesting was ", R))
+                # print(paste0("the total effort was ", E_total))
+                # print(paste0("the total product was ", total_product))
+                # print(paste0("the defector's payoff was ",  unique(agents_own[strategy == 0, payoff])))
+                # print(paste0("the average defector utility was ", agents_own[strategy == 0, mean(utility)]))
+                # print(paste0("the cooperator's payoff was ", unique(agents_own[strategy == 1, payoff])))
+                # print(paste0("cooperators' utility was ", unique(agents_own[strategy ==1, utility])))
+      
+                agents_own[agent_i, strategy := strat_j]        # strategy updating 
+                agents_own[strategy == 0, effort := e_defect]
+                agents_own[strategy == 1, effort := e_coop]
+                strat_switched[r] <- 1
+                p_coop_i <- agents_own[, sum(strategy)] / N 
+                
+                # print(paste0("there are now ", p_coop_i * 100, " % of agents cooperating"))
+                # print("  ")
+              }
+            }
+          }
+        }
+        rm(list = c("agent_i", "strat_i", "mates", "agent_j", "strat_j"))
+      }
+    }
+    
+    # rewiring (when scheduling_dynamics == "seperate")
+    if (scheduling_dynamics == "seperate") {
+      if (runif(1,0,1) < rho) { 
+        agent_i <- sample(nrow(agents_own), 1)     
+        strat_i <- agents_own[agent_i, strategy]   
+        matez <- which(network[agent_i, ] == 1)
+        if (length(matez != 0)) {
+          agent_j <- sample(matez, 1)                
+          strat_j <- agents_own[agent_j, strategy]   
+          if (tie_strat == "min_method" )  {
+            if (strat_i == 1 && strat_j == 0) {
+              network[agent_i, agent_j] <- 0      # sever tie
+              options <- setdiff(seq(1, 100, 1), 
+                                 c(agent_i, agent_j, matez)) 
+              new_tie <- sample(options, 1)       # get new connection
+              network[agent_i, new_tie] <- 1
+            }
+          }
+        }
+      }
+    }
+    
+    # Stopping rules (and read-out for debugging)
+    if (p_coop_i == 1) {
+      # print(paste0("Cooperators win at tick", tick, "!"))   # stopping rule 1
+      # print("..............................................")
+      break
+    }
+    if (p_coop_i == 0) {
+      # print(paste0("defectors win at tick ", tick, "!"))    # stopping rule 2
+      # print("..............................................")
+      break
+    }
+    
+    
+    if (tick %in% print_ticks) {
+      
+      # print(paste0("at time step ", tick))
+      # print(paste0("the size of the resource after harvesting was ", R))
+      # print(paste0("the total effort was ", E_total))
+      # print(paste0("the total product was ", total_product))
+      # print(paste0("with ", p_coop_i, " agent's cooperating."))
+      # print(paste0("the defector's payoff was ",  unique(agents_own[strategy == 0, payoff])))
+      # print(paste0("average defector utility was ", agents_own[strategy == 0, mean(utility)]))
+      # print(paste0("the cooperator's payoff was ", unique(agents_own[strategy == 1, payoff])))
+      # print(paste0("cooperators' utility was ", unique(agents_own[strategy ==1, utility])))
+      # print("   ")
+      
+      nodes <- agents_own[, c("id", "strategy")][, tick := tick]
+      l <- list(node_list, nodes)
+      node_list <- rbindlist(l, use.names = TRUE)
+      network_d[, , match(tick, print_ticks)] <- network
+      
+      # defectors isolated stopping rule 
+      defectors <- agents_own[strategy == 0, id]
+      for (d in defectors) {
+        partners <- which(network[d, ] == 1)       # find partners 
+        n_coop <- nrow(agents_own[id %in% partners & strategy == 1]) # count number cooperating
+        if (n_coop == 0) {break} # if none are, stop 
+        }
+
+      # if (tick == max_t) {
+      #   print("mixed at end")
+      #   print(paste0("with ", p_coop_i * 100, " % of agents cooperating"))
+      #   print("..............................................")}
+      
+    }
+    
+    # store main data for round 
+    output[tick, names(output) := .(p_coop_i, R, 
+                                    mean(ostracism_amount, na.rm = TRUE), 
+                                    agents_own[strategy == 1, mean(payoff)],
+                                    agents_own[strategy == 0, mean(payoff)],
+                                    agents_own[strategy == 0, mean(utility)],
+                                    E_total, total_product, sum(strat_switched)) ] 
+    rm(list = c("defectors", "strat_switched", "total_product", "E_total"))
+  }
+  return(list(output, network_d, node_list))
+}
+
+
+# run ^ for all parameter combinations (will move this to mclappy for parallel)
+modelRun <- function(combo) {
+  return(mapply(one_run, combo[,replicate], combo[, degree], 
+                combo[, resource_inflow], combo[, rho], combo[, N], 
+                combo[, initi_R], combo[, max_R], combo[, d], 
+                combo[, E_opt], combo[, q], combo[, w], combo[, alpha],
+                combo[, beta], combo[,gamma], combo[, h], combo[, t],
+                combo[, g], combo[, max_t], combo[, p_coop], combo[, mu],
+                combo[, negative_utilities], combo[,update_prob], 
+                combo[, network_type], combo[, scheduling_dynamics], 
+                combo[, tie_strat], combo[, e_coop], combo[, e_defect]
+                ))
+}
+
+```
+
+
+```{r}
+data_degree <- modelRun(combo)
+
+# list.save(data_degree, "min_replication.rdata")
+```
+
+
+
+# Eye ball 
+```{r}
+out <- data_degree[[16]]
+
+out[, "time"] <- seq(1, combo[1, max_t], 1)
+ggplot(out, aes(x = time)) + geom_line(aes( y = R_now), color = "green")  + 
+  geom_line(aes(y = total_harvest), color = "red")
+
+ggplot(out, aes(x = time, y = total_e)) + geom_line()
+
+ggplot(out, aes(x = time)) + 
+geom_line(aes(y = coop_U), color = "blue")  + 
+  geom_line(aes(y = defector_U,), color = "red") +        # average
+  geom_line(aes(y = defector_pi), color = "orange") + 
+  geom_line(aes(y = magnitude_ostracism)) + ylab("")      # average
+
+ggplot(out, aes(x = time)) + geom_line(aes(y = prop_coop))
+
+# # plot strat distribution in initial, middle, and final network 
+# 
+# networks_to_plot <- c(1, you_set_params[1, max_t] / 2, you_set_params[1, max_t])
+# for (net in networks_to_plot) { 
+#   edge_list <- min_sep[[3]] %>% filter(tick == net) %>% select(id, strategy)
+#   network <- graph.adjacency(min_sep[[2]][,, net], mode = "undirected")
+#   V(network)$strategy <-  edge_list$strategy
+#   V(network)$color <- ifelse(V(network)$strategy == 1, "green", "red")
+#   set.seed(1234)
+#   plot.igraph(network, layout = layout_with_lgl, 
+#             vertex.size = 10,vertex.label.cex = 0.5)
+#   }
+
+
+```
+
+
+
+
+
+```{r}
+# exploring the ostracism function: 
+
+  ostracism <- 
+    function (h, t, g, p_coop_i) {        # Gompertz for ostracism
+      o <- h * exp(t * exp(g * p_coop_i))       
+      return(o)
+    } 
+
+  dat <- tibble(NC = seq(0,100,1), 
+                gomp_N = round(ostracism(.333, -150, -10, NC), 3),
+                gomp_NCN = round(ostracism(.333, -150, -10, NC/100), 3),
+                gomp_15 = round(ostracism(.333, -150, -10, NC/15),3),
+                gomp_90 = round(ostracism(.333, -150, -10, NC/90), 3)
+                
+                # plot expected ostracism with pc = .99 for each at a given C
+                )
+  
+  ggplot(dat, aes(x = NC)) + 
+    # geom_line(aes(y = gomp_N), colour = "black") + 
+    geom_line(aes(y = gomp_NCN), colour = "pink", size = 1.5) + 
+    # geom_line(aes(y = gomp_15), colour = "green") + 
+    # geom_line(aes(y = gomp_90), colour = "blue") + 
+    xlab("% of population/partners cooperating") + 
+    ylab("ostracism") + theme_classic() + theme(text = element_text(size=20))
+```
+
+
+Ostracism: 
+- Sugriato et al. (2017) does kn/average_degree (in a static network)
+- "Coleman (1988) and Granovetter (1985) argue that closure, a network tie between two individuals who share a common partner, is a key aspect of social capital, facilitating cooperation through trust and the ability to sanction non-cooperators" 
+
+Trust, in this model, could be faciliated by network structures where an agent "knows" that if someone was to start defecting, the pattern of behaviour would be unable to spread (i.e., that the ostracism mechanism would reduce their utility to be < the cooperators)
+
+
