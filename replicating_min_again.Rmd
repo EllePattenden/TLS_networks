@@ -5,7 +5,9 @@ date: "07/04/2021"
 output: html_document
 ---
 # Overview
-This script explores the purported relationships between rewiring probability and resoure inflow on a population of cooperating agents' resistance to invasion by a lone defector in the TLS model (2012; 2017) with network dynamics described by Min et al. (2018). They found that increasing the probability of network rewiring had a positive effect in networks with low average dgree (k = 15), with minimal impact in relatively high degree networks (k = 90) except when close to 1. However, *Min et al. created a dependancy (i.e., negative relationnship) between the probability of strategy updating and probability of network rewiring, as set by the parameter rho*. Here, we examine what happens when the probability of network rewiring is manipulated independently. 
+This script explores the purported relationships between rewiring probability and resoure inflow on a population of cooperating agents' resistance to invasion by a lone defector in an agent-based version of the TLS model (2012; 2017) with network dynamics described by Min et al. (2018). They found that increasing the probability of network rewiring had a positive effect in networks with low average dgree (k = 15), with minimal impact in relatively high degree networks (k = 90) except when close to 1. However, *Min et al. created a dependancy (i.e., negative relationnship) between the probability of strategy updating and probability of network rewiring, as set by the parameter rho*. Here, we examine what happens when the probability of network rewiring is manipulated independently. 
+--> Building up to an argument that, in conditions where collective action problems are truly large scale and/or play out with open access resources, our propensity to sever ties with defectors (which is advantageous for dyadic cooperation as well as scenarios where group-level selection dominates) is NOT doing us any favours! 
+** but look at function of bridging ties in polycentric governance networks ** 
 
 
 ## Clustering stopping rule
@@ -13,6 +15,18 @@ One way that this model can reach a mixed equilibrium is when defectors and coop
 **The ONLY way the system can equilibriate when the probability  of tie rewiring is seperated from the prob of strategy updating is when seperate communities emerge; otherwise, even stable mixes can be interupted when a cooperator gets chosen to update their ties ** 
 - - > DO I NEED TO MAKE THIS BE BASED ON UTILITY COMPARISONS RATHER THAN STRATEGY AS WELL? 
          (i'm leaning towards yes)
+         
+         *** to fully recrease Min et al.'s plots, it's a NO *** 
+
+## Errors
+- when rho is 0 and c is high, returning NA where true/false needed with `if (strat_i != strat_j) {`
+
+Error in if (agents_own[, .N, strategy][, .N] == 2 && agents_own[strategy ==  : 
+  missing value where TRUE/FALSE needed
+
+## CHANGES 
+- store network in final step if model reaches equilibrium
+
 
 
 ```{r}
@@ -78,12 +92,6 @@ params[, "e_defect" := e_coop *  mu]    # defector's effort
 # degree <- c(15, 90)           # comparing average degree of 15 and 19
 # resource_inflow <- seq(10, 60, 1)  # across c [10:60]
 # rho <- sort(seq(0, 1, 0.01), decreasing = TRUE) # with rho [0:1]
- 
-# # #  FOR DE-BUGGING
-# replicate <-  1
-# degree <- c(15)           # comparing average degree of 15 and 19
-# resource_inflow <-  seq(30, 60, 5)
-# rho <- 0
 
 ## For Yoshi
 replicate <-  1        
@@ -518,5 +526,25 @@ Ostracism:
 - "Coleman (1988) and Granovetter (1985) argue that closure, a network tie between two individuals who share a common partner, is a key aspect of social capital, facilitating cooperation through trust and the ability to sanction non-cooperators" 
 
 Trust, in this model, could be faciliated by network structures where an agent "knows" that if someone was to start defecting, the pattern of behaviour would be unable to spread (i.e., that the ostracism mechanism would reduce their utility to be < the cooperators)
+
+
+
+
+```{r}
+# code from one_run_min used to store networks back when I thought i'd do it every 500 ticks. 
+# now decided to record every time a tie changes 
+  store_networks <- seq(0, max_t,    # store network data
+                          by = 500   # every 500 ticks
+  )
+  network_list <- vector(        # store info about ties
+    mode = "list",               # = as sparse adjacency matrices
+    length = 1 + length(store_networks)  # in network_list
+  )
+  node_list <- data.table(            # strategy in node_list
+    id = rep(seq(1, 100, 1), times = 1 + length(store_networks)),
+    strategy = NA,
+    tick = rep(c(0, 1, seq(500, max_t, 500)), each = N)
+  )
+```
 
 
