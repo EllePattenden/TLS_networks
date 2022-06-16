@@ -218,7 +218,6 @@ one_run <- function(        # reading in row of values in sequence from combo
           rm(comp, nodes)  # clean up
         }
       }
-      rm(comp)
     } else {
       rm(agent_i)
     }  # end strategy updating procedure 
@@ -326,9 +325,14 @@ one_run <- function(        # reading in row of values in sequence from combo
                 "RI", resource_inflow,
                 "rho", rho, 
                 sep = "_")
+  
+  # method for Ozstar
+  ## let's just check this doesn't work first... 
+  
+  # method for local 
   dir.create(file.path(where, "replicating_min", this), recursive = TRUE)
   name <- file.path(where, "replicating_min", this, 
-                    paste( "rep", replicate, 
+                    paste("rep", replicate, 
                            "degree", degree, 
                            "RI", resource_inflow,
                            "rho", rho,

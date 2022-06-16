@@ -10,19 +10,26 @@
 ##  Min et al. (2018). They found that increasing the probability of network   
 ##  rewiring had a positive effect in networks with low average dgree (k =     
 ##  15), but had minimal impact in relatively high degree networks (k = 90)       
-##  except when close to 1. However, Min et al. created a dependancy (i.e.,   
+##  except when close to 1. However, Min et al. created a dependency (i.e.,   
 ##  negative relationship) between the probability of strategy updating and   
 ##  probability of network rewiring, as set by the parameter rho. Here, we    
 ##  examine what happens when the probability of network rewiring is           
-##  manipulated independently.   
+##  manipulated independently.
+
+## A year later - Elle realises that we will have to do the follow ups, (1) hold  
+# rho constant and vary the probability of strategy updating and (2) vary both as
+# the the prob of strategy updating is tied to the payoff difference, which is 
+# tied to the resource inflow... 
 
 # CONTEXT
 ##  This is part of a body of work that argues that, in conditions where   
 ##  collective action problems are truly large scale and/or involve the    
 ##  management of open access resources, a propensity to sever ties with   
 ##  defectors (which is advantageous for dyadic cooperation as well as     
-##  scenarios where group-level selection dominates) is not be doing us   
+##  scenarios where group-level selection dominates) may not be doing us   
 ##  any favours.     
+
+# https://dashboard.hpc.unimelb.edu.au/forms/script_generator/
 
 ##-------------------------------------------------------------------------#
 
@@ -38,7 +45,7 @@ library(here)
 here::here()         # set directory
 rm(list = ls())      # clear environment 
 options(scipen=999)  # stop printing in scientific notation, please !
-set.seed(54321)      # need to swap if running in parallel ! 
+set.seed(31133113)      # swap so each make brain do sense thing and batch (elle think)
 igraph_options(sparsematrices = TRUE)  # work with sparse matrices, please
 
 # -------------------------- Parameters ----------------------------------#
@@ -75,7 +82,7 @@ params <- setDT(data.frame(
   negative_utilities = TRUE,   # can agent utilities be negative? logical;
                    # false = they can't. TLS et al. (2016) said no 
                    # but you * might * need  them here to get differences  
-                   # between cooperatorsand defectors with small resource 
+                   # between cooperator sand defectors with small resource 
                    # inflows here... (Min et al. allowed, I think)
   update_prob = 0.01,  # proportion of agents comparing utilities in each tick 
                    # referred to as "strategy updating probability" in some
@@ -96,18 +103,23 @@ params[, "e_coop" := E_opt / N ]    # effort for cooperators
 params[, "e_defect" := e_coop *  mu]    # defector's effort
 # params[, "e_defect" := 1.826 / N]   # ' ' if you want the rounding to be exact 
 
-# Systematically Varied 
+# Systematically Varied = 309060 runs 
 # replicate <- seq(1, 30, 1)         # 30 reps of each
 # degree <- c(15, 90)                # comparing average degree of 15 and 19
 # resource_inflow <- seq(10, 60, 1)  # across c [10:60]
 # rho <- sort(seq(0, 1, 0.01), decreasing = TRUE) # with rho [0:1]
 
-#debug
-replicate <- 1         
-degree <- 15                
-resource_inflow <- seq(10, 60, 10)  
-rho <- sort(seq(0, 1, 0.1), decreasing = TRUE) # with rho [0:1]
+#debug / pilot 
+# replicate <- 1
+# degree <- 15
+# resource_inflow <- seq(10, 60, 10)
+# rho <- sort(seq(0, 1, 0.1), decreasing = TRUE) # with rho [0:1]
 
+# compromise for Floyd = 64260 runs 
+replicate <- seq(1, 30, 1)         # 25 reps of each
+degree <- c(15, 90)                # comparing average degree of 15 and 90
+resource_inflow <- seq(10, 60, 1)  # across c [10:60]
+rho <- sort(seq(0, 1, 0.05), decreasing = TRUE) # with rho [0:1]
 
 # stick all parameters in one big data.table 
 combos <- setDT(expand.grid(replicate, degree, resource_inflow, rho))
@@ -134,5 +146,9 @@ if (!dir.exists("replicating_min")) {
 
 # ---------------------------- Run and Save ----------------------------------#
 
-modelRun(combo)
+modelRun(combo)  # run for full parameter space
+
+purrr::pmap(combo[1,], one_run)   # run for one set of parameter combinations
+
+
 
