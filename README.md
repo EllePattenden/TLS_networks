@@ -14,7 +14,8 @@ The starting point is the lone study (to my knowledge) that incorporated network
 
 After this, will (1) introduce different tie updating strategy that aligns with the risk hypothesis and (2) give ties a new purpose (monitoring + sanctioning) 
 
-# SUNBELT 2022 - "Modelling the evolution of cooperation in social-ecological systems: do we need to incorporate network processes or is network structure sufficient?"
+## SUNBELT 2022
+### "Modelling the evolution of cooperation in social-ecological systems: do we need to incorporate network processes or is network structure sufficient?"
 
 Floyd will be presenting some of this work...
 
