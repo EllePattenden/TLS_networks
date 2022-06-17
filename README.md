@@ -14,6 +14,15 @@ The starting point is the lone study (to my knowledge) that incorporated network
 
 After this, will (1) introduce different tie updating strategy that aligns with the risk hypothesis and (2) give ties a new purpose (monitoring + sanctioning) 
 
+# SUNBELT 2022 - "Modelling the evolution of cooperation in social-ecological systems: do we need to incorporate network processes or is network structure sufficient?"
+
+Floyd will be presenting some of this work...
+
+Abstract: 
+How do cooperative solutions to environmental social dilemmas evolve in populations of rational individuals and what mechanisms maintain them overtime? An important step towards answering this question came with the recognition that ecological dynamics cannot be abstracted away in models of the evolution of cooperation for environmental management, as it is the combination of social and ecological conditions that determine the incentives people have to cooperate, by restraining their natural resource use to sustainable levels, or to defect, by engaging in excessive consumption. A second advancement was made with the move away from assuming that populations are well-mixed when modeling these systems – that is, that they can be represented by complete graphs, where everyone has the opportunity to interact with everyone else and does so with equal probability  – to consider structured populations, including scenarios where agents can rewire their social networks. However, in the pursuit of simple models, some of the work in this vein has neglected the social network and psychological literatures. It remains an open question, then, whether incorporating more realistic network processes will impact the outcomes observed in these models and challenge any of the basic laws they have put forward, some of which are at odds with insights from other disciplines (e.g., that cooperation will evolve if the benefit-to-cost ratio is greater than the average degree and that clustering is a viable solution to many cooperation problems). In this presentation, we begin to address this question with a classic social-ecological systems model, developed by Tavoni, Schlüter, and Levin (2012) and subsequently picked up complex systems scientists (e.g., Sugiarto, Chung, Lai, & Chew, 2015). It incorporates social pressure to comply with cooperative norms regarding water use but, at present, some unrealistic assumptions about the impact of social sanctioning in networks. 
+
+
+
 
 
 
