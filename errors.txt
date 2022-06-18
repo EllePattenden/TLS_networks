@@ -1,0 +1,27 @@
+### MAIN.MIN ERRORS FROM TESTING ON OZSTAR 
+
+Identified by finding the offending run in the combo data.table and searching: 
+find. -type f -print0 | xargs -0 grep -l "run # XXXXXXXXXX took"
+
+[test] combo[131,]   /fred/oz139/elle/log/27681696
+& 
+[test] combo[21,]    /fred/oz139/elle/log/27679851
+&
+[test] combo[44,]    /fred/oz139/elle/log/27680389
+&
+[test] combo[18,]    /fred/oz139/elle/log/27679401
+
+Error in if (runif(1, min = 0, max = 1) < utility_diff) { : 
+  missing value where TRUE/FALSE needed
+Calls: <Anonymous> -> .f 
+
+
+[test] combo[4,]    /fred/oz139/elle/log/27678811
+Error in gzfile(file, "wb") : cannot open the connection
+Calls: <Anonymous> -> .f -> save -> gzfile
+In addition: Warning message:
+In gzfile(file, "wb") :
+  cannot open compressed file 'replicating_min_rep_1_degree_90_RI_15_rho_1_.Rdata', probable reason 'Stale file handle'
+Execution halted
+
+** suspect this is because I was changing files while it was running... 
