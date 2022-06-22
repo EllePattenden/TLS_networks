@@ -200,7 +200,7 @@ one_run <- function(        # reading in row of values in sequence from combo
         
         
         ## 22/06/22 - added chunk because very occasionally chucks error below...
-        if (utility_diff == NA) { 
+        if (is.na(utility_diff) == TRUE) { 
           print(paste0("utility diff is NA, in round: ", tick))
           print(paste0("agent i is a: ", comp[agent == "i", strategy]))
           print(paste0("agent j is a: " ,comp[agent == "j", strategy]))
