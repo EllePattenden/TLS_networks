@@ -341,25 +341,32 @@ one_run <- function(        # reading in row of values in sequence from combo
   
   node_list[, strategy := as.numeric(strategy)]  # don't want logical 
   
-  where <- getwd()
-  this <- paste(Sys.Date(), 
-                "rep", replicate, 
-                "degree", degree, 
-                "RI", resource_inflow,
-                "rho", rho, 
-                sep = "_")
-  
   # method for Ozstar
-  ## let's just check this doesn't work first... 
-  
-  # method for local 
-  dir.create(file.path(where, "replicating_min", this), recursive = TRUE)
-  name <- file.path(where, "replicating_min", this, 
-                    paste("rep", replicate, 
+   name <- paste("replicating_min", "rep", replicate, 
                            "degree", degree, 
                            "RI", resource_inflow,
                            "rho", rho,
-                           ".Rdata", sep = "_"))
+                           ".Rdata", sep = "_")
+  
+  
+  
+  
+  # method for local 
+  # where <- getwd()
+  # this <- paste(Sys.Date(), 
+               # "rep", replicate, 
+               # "degree", degree, 
+               # "RI", resource_inflow,
+               # "rho", rho, 
+               # sep = "_")
+  #dir.create(file.path(where, "replicating_min", this), recursive = TRUE)
+  #name <- file.path(where, "replicating_min", this, 
+                   # paste("rep", replicate, 
+                          # "degree", degree, 
+                          # "RI", resource_inflow,
+                          # "rho", rho,
+                          # ".Rdata", sep = "_"))
+  
   data <- list(output, network_list, node_list)
   save(data, file = name) 
   
