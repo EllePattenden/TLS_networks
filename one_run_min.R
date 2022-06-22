@@ -63,9 +63,9 @@ one_run <- function(        # reading in row of values in sequence from combo
       "R_now",           # (2) resource size after harvesting,
       "mag_ostracism",   # (3) ostracism cost (average)
       "sd_ostracism",    # (4) ostracism cost (standard deviation)
-      "coop_U",          # (5) cooperator utility / payoff
-      "defector_pi",     # (6) defector payoff
-      "defector_U",      # (7) defector utility
+      "coop_U",          # (5) cooperator utility / payoff  (average*)
+      "defector_pi",     # (6) defector payoff (average*)
+      "defector_U",      # (7) defector utility (average)
       "total_e",         # (8) total effort,
       "total_harvest",   # (9) total product for round,
       "strat_updated",   # (10) strategy updated? 1 = true, 0 = false 
@@ -198,6 +198,16 @@ one_run <- function(        # reading in row of values in sequence from combo
                     abs(comp[agent == "i", utility])), na.rm = TRUE),
           0)
         
+        
+        ## 22/06/22 - added chunk because very occasionally chucks error below...
+        if (utility_diff == NA) { 
+          print(paste0("utility diff is NA, in round: ", tick))
+          print(paste0("agent i is a: ", comp[agent == "i", strategy]))
+          print(paste0("agent j is a: " ,comp[agent == "j", strategy]))
+          print(paste0("agent i's utility is : " , comp[agent == 'i', utility]))
+          print(paste0("agent j's utility is : " , comp[agent == 'j', utility]))
+          }
+        
         # and updates strat w probability proportional to the payoff difference
         if (runif(1, min = 0, max = 1) < utility_diff) {
           agents_own[comp[agent == "i", id], 
@@ -231,7 +241,7 @@ one_run <- function(        # reading in row of values in sequence from combo
           ]
       if (length(which(network[agent_ii[, id], ] == TRUE)) != 0) { # if agent_ii has ties
         agent_jj <- agents_own[          # randomly select one 
-          sample(which(network[agent_ii[, id], ] == TRUE), 1), # of their direct neighbours 
+          sample(which(network[agent_ii[, id], ] == TRUE), 1), # of their direct neighbors 
           .(id, strategy, utility)       # record " " 
           ][, agent := "j"               # and add identifier
             ]
@@ -241,13 +251,26 @@ one_run <- function(        # reading in row of values in sequence from combo
             comp[agent == "j", strategy == 0])  {   # and agent_jj is a defector
           network[comp[agent == "i", id],           # agent_ii severs the tie 
                   comp[agent == "j", id]] <- FALSE  # noting this is regardless of utility diff!
+          
+          ## 22/06/22 - past Elle, you dumbO these are NOT directed ties...
+          ## so need to update for both rows!
+          
+          network[comp[agent == "j", id],           # agent_jj also needs to sever the tie... 
+                  comp[agent == "i", id]] <- FALSE
+          
           options <- setdiff(seq(1, 100, 1),             # identify potential new partners
                              c(comp[agent == "i", id],   # not self
                                comp[agent == "j", id],       # agent_jj 
                                which(network[comp[agent == "i", id], ] == TRUE) # or current ties
                              ))
+          
+          ## 22/06/22 - changes so that row j is updated as well 
+          new_mate <- sample(options, 1)                ## 22/06/22 - done first 
           network[comp[agent == "i", id],       # make new tie
-                  sample(options, 1)] <- TRUE   # selected randomly from options
+                  new_mate] <- TRUE             # selected randomly from options
+          network[new_mate, comp[agent == "i", id]] <- TRUE  
+          rm(new_mate)
+          
           # update trackers
           tie_switched <- 1 
           network_list[[tick + 1]] <- network    # store network
