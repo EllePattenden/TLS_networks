@@ -45,7 +45,7 @@ library(here)
 here::here()         # set directory
 rm(list = ls())      # clear environment 
 options(scipen=999)  # stop printing in scientific notation, please !
-set.seed(31133113)      # swap so each make brain do sense thing and batch (elle think)
+# set.seed(31133113)  # this is problematic as being run in parallel
 igraph_options(sparsematrices = TRUE)  # work with sparse matrices, please
 
 # -------------------------- Parameters ----------------------------------#
