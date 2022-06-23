@@ -40,7 +40,7 @@ one_run <- function(        # reading in row of values in sequence from combo
   ostracism <- 
     function (h, t, g, p_coop) {       
       o <- h * exp(t * exp(g * p_coop))   
-      if (is. nan(o)) {return(0)}     # 23.06.22 - avoid error when ostracism is wee
+      if (is.nan(o)) {return(0)}     # 23.06.22 - avoid error when ostracism is wee
       return(o)
     }  
   
