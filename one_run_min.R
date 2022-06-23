@@ -34,13 +34,15 @@ one_run <- function(        # reading in row of values in sequence from combo
   resource_dynamics <- 
     function(R, c, d, max_R, q, E_total) {     
       new <- R + (c - ( d * ( (R / max_R ) ^ 2 ) )) - (q * E_total * R ) 
+      if (new < 0) {
+        new <- 0        # 23.06.22 - avoid utility_diff error ! 
+      }
       return(new) 
     }
   # Gompertz for ostracism 
   ostracism <- 
     function (h, t, g, p_coop) {       
       o <- h * exp(t * exp(g * p_coop))   
-      if (is.nan(o)) {return(0)}     # 23.06.22 - avoid error when ostracism is wee
       return(o)
     }  
   
