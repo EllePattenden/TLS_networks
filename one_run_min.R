@@ -7,7 +7,7 @@ one_run <- function(        # reading in row of values in sequence from combo
   replicate, degree, resource_inflow, rho, N, initi_R, max_R, d, E_opt, q, w,
   alpha, beta, gamma, h, t, g, max_t, p_coop, mu, negative_utilities, 
   update_prob, network_type, scheduling_dynamics, tie_strat, e_coop, e_defect
-  ){
+){
   
   # --------------------------- Set-Up  ------------------------------------#
   
@@ -20,9 +20,9 @@ one_run <- function(        # reading in row of values in sequence from combo
   c <- resource_inflow      # stick to calling this c for convenience
   R <- initi_R              # current size of the resource
   community_stopping <- seq(1000, max_t, 1000)  # isolated defectors stopping  
-                                                # rule checked every 1000 ticks 
+  # rule checked every 1000 ticks 
   # repeats <- update_prob * N  # number selected for each social interaction
- 
+  
   # functions: 
   # Cobb-Douglas production 
   cobb_douglas <- 
@@ -39,7 +39,8 @@ one_run <- function(        # reading in row of values in sequence from combo
   # Gompertz for ostracism 
   ostracism <- 
     function (h, t, g, p_coop) {       
-      o <- h * exp(t * exp(g * p_coop))       
+      o <- h * exp(t * exp(g * p_coop))   
+      if (o == NaN) {return(0)}     # 23.06.22 - avoid error when ostracism is weeeeeee
       return(o)
     } 
   
@@ -48,7 +49,7 @@ one_run <- function(        # reading in row of values in sequence from combo
     mode = "list",            # rounds where ties or strategies are updated 
     length = max_t + 1        # info about ties stored as sparse adjacency matrices
   )                           # in network_list 
-                              # (will remove empty [[]] at end)
+  # (will remove empty [[]] at end)
   node_list <- data.table(
     id = rep(seq(1, 100, 1), times = 1 + max_t),  # info about key attribute 
     strategy = NA,                                # = strategy
@@ -85,7 +86,7 @@ one_run <- function(        # reading in row of values in sequence from combo
   node_list[nodes, on = c('id', 'tick'), 
             strategy := i.strategy]         # initial strategies 
   
-        
+  
   # ------------------------------- GO! ------------------------------------#
   
   for (tick in 1:max_t) { 
@@ -121,9 +122,9 @@ one_run <- function(        # reading in row of values in sequence from combo
       # even though using && should return false if there is only one strategy in the pop... 
       
       defector_adv <- agents_own[, payoff[1], by = strategy   # get info for each agent type
-                                 ][order(-strategy)           # make defectors second row   
-                                   ][,(V1 - V1[.I - 1]) / V1  # calc. their payoff advantage
-                                     ][2]                     # extract correct (2nd) value
+      ][order(-strategy)           # make defectors second row   
+      ][,(V1 - V1[.I - 1]) / V1  # calc. their payoff advantage
+      ][2]                     # extract correct (2nd) value
       # locate defectors 
       defectors <- agents_own[strategy == 0, id]
       ostracism_amount <- numeric(length(defectors))  # set up to store
@@ -177,14 +178,14 @@ one_run <- function(        # reading in row of values in sequence from combo
     agent_i <- agents_own[
       sample(nrow(agents_own), 1),   # randomly select focal agent i
       .(id, strategy, utility)       # record their id, strategy, utility
-      ][, agent := "i"               # and add an identifier
-        ]               
+    ][, agent := "i"               # and add an identifier
+    ]               
     if ( length(which(network[agent_i[, id], ] == TRUE)) != 0) { # if agent_i has ties
       agent_j <- agents_own[         # randomly select their social partner, agent_j
         sample(which(network[agent_i[, id], ] == TRUE), 1),
         .(id, strategy, utility)     # record " " 
-        ][, agent := "j"               # and add identifier
-          ]
+      ][, agent := "j"               # and add identifier
+      ]
       comp <- rbind(agent_i, agent_j)  
       rm(agent_i, agent_j)
       # agent i evaluates their utility
@@ -197,16 +198,6 @@ one_run <- function(        # reading in row of values in sequence from combo
                      comp[agent == "i", utility]) /  
                     abs(comp[agent == "i", utility])), na.rm = TRUE),
           0)
-        
-        
-        ## 22/06/22 - added chunk because very occasionally chucks error below...
-        if (is.na(utility_diff) == TRUE) { 
-          print(paste0("utility diff is NA, in round: ", tick))
-          print(paste0("agent i is a: ", comp[agent == "i", strategy]))
-          print(paste0("agent j is a: " ,comp[agent == "j", strategy]))
-          print(paste0("agent i's utility is : " , comp[agent == 'i', utility]))
-          print(paste0("agent j's utility is : " , comp[agent == 'j', utility]))
-          }
         
         # and updates strat w probability proportional to the payoff difference
         if (runif(1, min = 0, max = 1) < utility_diff) {
@@ -237,14 +228,14 @@ one_run <- function(        # reading in row of values in sequence from combo
       agent_ii <- agents_own[
         sample(nrow(agents_own), 1),   # randomly select focal agent ii
         .(id, strategy, utility)       # record their id, strategy, utility
-        ][, agent := "i"               # and add an identifier
-          ]
+      ][, agent := "i"               # and add an identifier
+      ]
       if (length(which(network[agent_ii[, id], ] == TRUE)) != 0) { # if agent_ii has ties
         agent_jj <- agents_own[          # randomly select one 
           sample(which(network[agent_ii[, id], ] == TRUE), 1), # of their direct neighbors 
           .(id, strategy, utility)       # record " " 
-          ][, agent := "j"               # and add identifier
-            ]
+        ][, agent := "j"               # and add identifier
+        ]
         comp <- rbind(agent_ii, agent_jj)  
         rm(agent_ii, agent_jj)
         if (comp[agent == "i", strategy == 1] &     # if agent_ii is a cooperator 
@@ -335,48 +326,55 @@ one_run <- function(        # reading in row of values in sequence from combo
     rm(list = c("E_total", "total_product", "strat_switched", "tie_switched", 
                 "defectors", "p_coop_i"))
     
+    
+    if (tick == max_t) {
+      print("... Made it to the end! ... ")
+    }
+    
   }  # end tick 
   
   # --------------------------- Write Data ---------------------------------#
   
   node_list[, strategy := as.numeric(strategy)]  # don't want logical 
   
-  # method for Ozstar
-   name <- paste("replicating_min", "rep", replicate, 
-                           "degree", degree, 
-                           "RI", resource_inflow,
-                           "rho", rho,
-                           ".Rdata", sep = "_")
-  
-  
-  
+  #where <- getwd()
+  #this <- paste(# Sys.Date(), 
+  # "rep", replicate, 
+  # "degree", degree, 
+  # "RI", resource_inflow,
+  # "rho", rho, 
+  # sep = "_")
   
   # method for local 
-  # where <- getwd()
-  # this <- paste(Sys.Date(), 
-               # "rep", replicate, 
-               # "degree", degree, 
-               # "RI", resource_inflow,
-               # "rho", rho, 
-               # sep = "_")
-  #dir.create(file.path(where, "replicating_min", this), recursive = TRUE)
-  #name <- file.path(where, "replicating_min", this, 
-                   # paste("rep", replicate, 
-                          # "degree", degree, 
-                          # "RI", resource_inflow,
-                          # "rho", rho,
-                          # ".Rdata", sep = "_"))
+  #dir.create(file.path(
+  # where, 
+  # "replicating_min", this), recursive = TRUE)
   
+  # name <- file.path(where, 
+  # "replicating_min",  # this, 
+  # paste("rep", replicate, 
+  #     "degree", degree, 
+  #    "RI", resource_inflow,
+  #   "rho", rho,
+  #   ".Rdata", sep = "_"))
+  
+  name <- paste("replicating_min", "rep", replicate, 
+                "degree", degree, 
+                "RI", resource_inflow,
+                "rho", rho,
+                ".Rdata", sep = "_")
   data <- list(output, network_list, node_list)
-  save(data, file = name) 
+  save(data, file = name)
   
   # clean up 
-  rm(output, network_list, node_list, where, this, name, data, c, R)
-
+  rm(output, network_list, node_list,
+     # where, this, 
+     name, data, c, R)
+  
 }  # end run 
 
 ##---------------------------------------------------------------------------
-##                            PARAMATER SWEEEEEP                           --
+##                            PARAMETER SWEEEEEP                           --
 ##---------------------------------------------------------------------------
 
 # Function to run ^ for all parameter combinations 
