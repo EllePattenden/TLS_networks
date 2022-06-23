@@ -10,7 +10,6 @@ one_run <- function(        # reading in row of values in sequence from combo
 ){
   
   # --------------------------- Set-Up  ------------------------------------#
-  
   # get population of agents 
   agents_own <- agent_generator(N, p_coop, E_opt, mu)
   # and their initial social network (ER-random with given average degree)
@@ -44,7 +43,7 @@ one_run <- function(        # reading in row of values in sequence from combo
     function (h, t, g, p_coop) {       
       o <- h * exp(t * exp(g * p_coop))   
       return(o)
-    }  
+    } 
   
   # initialise output storage 
   network_list <- vector(     # note - will only store network data at t0 and in 
@@ -266,8 +265,18 @@ one_run <- function(        # reading in row of values in sequence from combo
           
           # update trackers
           tie_switched <- 1 
-          network_list[[tick + 1]] <- network    # store network
+          rm(copy, strat, cc, cd, dd)
           nodes <- agents_own[, c("id", "strategy")][, tick := tick]
+          
+          #23/06/22 changing what network data is stored to limit data size
+          # network_list[[tick + 1]] <- network    # store network
+          copy <- as.matrix(network) 
+          strat <- nodes[, strategy]
+          cc <- sum(copy[strat == 1, strat == 1])/2   # need to divide by 2
+          cd <- sum(copy[strat == 1, strat == 0])  
+          dd <- sum(copy[strat == 0, strat == 0])/2   # need to divide by 2
+          network_list[[tick + 1]] <- list(cc, cd, dd)
+          
           node_list[nodes, on = c('id', 'tick'),    
                     strategy := i.strategy]      # store attributes 
           rm(options, comp, nodes)  # clean up
