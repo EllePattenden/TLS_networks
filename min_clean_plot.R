@@ -84,7 +84,8 @@ for (i in stuff) {
   
   # extract prop_coop and tick at fin 
   if (dat[which.max(prop_coop), prop_coop] != 1) {
-    min_coop <- dat[which.min(prop_coop), prop_coop]
+    # min_coop <- dat[which.min(prop_coop), prop_coop]    # 25/06/22 - this isn't nec. the final coop
+    min_coop <- dat[which.max(tick), prop_coop]           # this is 
     ticked1 <- dat[which.min(prop_coop), tick]
     prop_coop_at_fin [ri == ri1 & rho == rho1,
                       prop_coop := min_coop]
