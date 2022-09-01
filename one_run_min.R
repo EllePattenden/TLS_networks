@@ -19,7 +19,7 @@ one_run <- function(        # reading in row of values in sequence from combo
   c <- resource_inflow      # stick to calling this c for convenience
   R <- initi_R              # current size of the resource
   community_stopping <- seq(1000, max_t, 1000)  # isolated defectors stopping  
-  # rule checked every 1000 ticks 
+                                                # rule checked every 1000 ticks 
   # repeats <- update_prob * N  # number selected for each social interaction
   
   # functions: 
@@ -29,15 +29,19 @@ one_run <- function(        # reading in row of values in sequence from combo
       product <- gamma * (E_total ^ alpha) * (R ^ beta)  
       return(product)
     }
+  
   # resource dynamics 
   resource_dynamics <- 
     function(R, c, d, max_R, q, E_total) {     
       new <- R + (c - ( d * ( (R / max_R ) ^ 2 ) )) - (q * E_total * R ) 
       if (new < 0) {
         new <- 0        # 23.06.22 - avoid utility_diff error ! 
+                        # 02.08.22 - see discussion about this going negative 
+                                   # in the first place... 
       }
       return(new) 
     }
+  
   # Gompertz for ostracism 
   ostracism <- 
     function (h, t, g, p_coop) {       
@@ -51,6 +55,7 @@ one_run <- function(        # reading in row of values in sequence from combo
     length = max_t + 1        # info about ties stored as sparse adjacency matrices
   )                           # in network_list 
   # (will remove empty [[]] at end)
+  
   node_list <- data.table(
     id = rep(seq(1, 100, 1), times = 1 + max_t),  # info about key attribute 
     strategy = NA,                                # = strategy
@@ -103,7 +108,10 @@ one_run <- function(        # reading in row of values in sequence from combo
     E_total <- agents_own[, sum(effort)]
     
     # update the state of the resource to reflect this (harvest)
-    R <- resource_dynamics(R, c, d, max_R, q, E_total)  
+    R <- resource_dynamics(R, c, d, max_R, q, E_total)      # 28.09.22 - this should really be at 
+                                                            # the end of GO ... 
+                                                            # but it's only impacting the first tick 
+                                                            # so we'll leave it... 
     
     # calculate the groups total product
     total_product <- cobb_douglas(E_total, R, alpha, beta, gamma)
@@ -117,14 +125,9 @@ one_run <- function(        # reading in row of values in sequence from combo
     
     # calculate utility for defectors 
     if (agents_own[, .N, strategy][,.N] == 2) {      # only run if both strategies are present 
-      
-      #  && agents_own[strategy == 0, payoff[1]] != 0) {   # and the payoff to defectors isn't 0 
-      # this occasionally throws an error (assuming when there are no defectors)
-      # even though using && should return false if there is only one strategy in the pop... 
-      
       defector_adv <- agents_own[, payoff[1], by = strategy   # get info for each agent type
       ][order(-strategy)           # make defectors second row   
-      ][,(V1 - V1[.I - 1]) / V1  # calc. their payoff advantage
+      ][,(V1 - V1[.I - 1]) / V1    # calc. their payoff advantage
       ][2]                     # extract correct (2nd) value
       # locate defectors 
       defectors <- agents_own[strategy == 0, id]
@@ -172,8 +175,9 @@ one_run <- function(        # reading in row of values in sequence from combo
       node_list[nodes, on = c('id', 'tick'), strategy := i.strategy]
       break 
     }
-    # if you want to round up negative utilities to 0 (following Shultz et al., 2016)
-    # agents_own[, utility := fifelse(utility < 0, 0, utility)]
+    
+    # round up negative utilities to 0 (following Shultz et al., 2016)
+     agents_own[, utility := fifelse(utility < 0, 0, utility)]
     
     # a social interaction that may culminate in strategy updating takes place
     agent_i <- agents_own[
@@ -197,18 +201,22 @@ one_run <- function(        # reading in row of values in sequence from combo
             comp[agent == 'j', utility],      # with Shulter et al. (2016)
           min(1, ((comp[agent == "j", utility] -      # something to come back to...
                      comp[agent == "i", utility]) /  
-                    abs(comp[agent == "i", utility])), na.rm = TRUE),
+                    abs(comp[agent == "i", utility])), na.rm = TRUE),  
           0)
+
+        # Di in Shulter et al. (2016) - actually normalised 
+        #((comp[agent == "j", utility] - comp[agent == "i", utility]) /  
+        #          abs(comp[agent == "i", utility]) + abs(comp[agent == "j", utility]))
         
         # and updates strat w probability proportional to the payoff difference
         if (runif(1, min = 0, max = 1) < utility_diff) {
           agents_own[comp[agent == "i", id], 
                      strategy := comp[agent == "j", strategy]]
-          agents_own[comp[agent == "i", id],                  # do sequentially, as run 
-                     effort := fifelse(strategy == 1, e_coop, e_defect)]  # in parallel
+          agents_own[comp[agent == "i", id],                  # do sequentially 
+                     effort := fifelse(strategy == 1, e_coop, e_defect)]  
           
-          print(paste("strategy updated!", " Agent", comp[agent == "i",id], 
-                      "became a ", agents_own[comp[agent == "i", id], strategy]))
+          #print(paste("strategy updated!", " Agent", comp[agent == "i",id], 
+                     # "became a ", agents_own[comp[agent == "i", id], strategy]))
           
           # update trackers 
           strat_switched <- 1
@@ -247,6 +255,7 @@ one_run <- function(        # reading in row of values in sequence from combo
           ## 22/06/22 - past Elle, you dumbO these are NOT directed ties...
           ## so need to update for both rows!
           
+          ## 22/06/22 - changes so that row j is updated as well 
           network[comp[agent == "j", id],           # agent_jj also needs to sever the tie... 
                   comp[agent == "i", id]] <- FALSE
           
@@ -256,8 +265,7 @@ one_run <- function(        # reading in row of values in sequence from combo
                                which(network[comp[agent == "i", id], ] == TRUE) # or current ties
                              ))
           
-          ## 22/06/22 - changes so that row j is updated as well 
-          new_mate <- sample(options, 1)                ## 22/06/22 - done first 
+          new_mate <- sample(options, 1)         
           network[comp[agent == "i", id],       # make new tie
                   new_mate] <- TRUE             # selected randomly from options
           network[new_mate, comp[agent == "i", id]] <- TRUE  
@@ -268,8 +276,8 @@ one_run <- function(        # reading in row of values in sequence from combo
           rm(copy, strat, cc, cd, dd)
           nodes <- agents_own[, c("id", "strategy")][, tick := tick]
           
-          #23/06/22 changing what network data is stored to limit data size
           # network_list[[tick + 1]] <- network    # store network
+          #23/06/22 changing what network data is stored to limit data size
           copy <- as.matrix(network) 
           strat <- nodes[, strategy]
           cc <- sum(copy[strat == 1, strat == 1])/2   # need to divide by 2
@@ -278,7 +286,7 @@ one_run <- function(        # reading in row of values in sequence from combo
           network_list[[tick + 1]] <- list(cc, cd, dd)
           
           node_list[nodes, on = c('id', 'tick'),    
-                    strategy := i.strategy]      # store attributes 
+                    strategy := i.strategy]           # store attributes 
           rm(options, comp, nodes)  # clean up
         } else {
           rm(comp)
@@ -389,7 +397,7 @@ one_run <- function(        # reading in row of values in sequence from combo
 ##---------------------------------------------------------------------------
 
 # Function to run ^ for all parameter combinations 
-# (will move this to mclappy for parallel)
+# (will move this to mclappy for parallel) - no, not a good idea Elle 
 modelRun <- function(combo) {
   mapply(one_run, combo[,replicate], combo[, degree], 
          combo[, resource_inflow], combo[, rho], combo[, N], 
