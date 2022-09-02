@@ -177,7 +177,8 @@ one_run <- function(        # reading in row of values in sequence from combo
     }
     
     # round up negative utilities to 0 (following Shultz et al., 2016)
-     agents_own[, utility := fifelse(utility < 0, 0, utility)]
+    # agents_own[, utility := fifelse(utility < 0, 0, utility)]
+    # only letting them be negative for the refuting min sims! 
     
     # a social interaction that may culminate in strategy updating takes place
     agent_i <- agents_own[
@@ -207,6 +208,7 @@ one_run <- function(        # reading in row of values in sequence from combo
         # Di in Shulter et al. (2016) - actually normalised 
         #((comp[agent == "j", utility] - comp[agent == "i", utility]) /  
         #          abs(comp[agent == "i", utility]) + abs(comp[agent == "j", utility]))
+        # paper has it as Uj = Ui but then that would be a negative number? 
         
         # and updates strat w probability proportional to the payoff difference
         if (runif(1, min = 0, max = 1) < utility_diff) {
@@ -221,7 +223,16 @@ one_run <- function(        # reading in row of values in sequence from combo
           # update trackers 
           strat_switched <- 1
           p_coop_i <- agents_own[, sum(strategy)] / N
-          network_list[[tick + 1]] <- network    # store network
+          # 23/06/22 changing what network data is stored to limit data size        
+          # network_list[[tick + 1]] <- network    # store network
+          copy <- as.matrix(network) 
+          strat <- nodes[, strategy]
+          cc <- sum(copy[strat == 1, strat == 1])/2   # need to divide by 2
+          cd <- sum(copy[strat == 1, strat == 0])  
+          dd <- sum(copy[strat == 0, strat == 0])/2   # need to divide by 2
+          network_list[[tick + 1]] <- list(cc, cd, dd)
+          rm(copy, strat, cc, cd, dd)
+          # fin changes for storage 
           nodes <- agents_own[, c("id", "strategy")][, tick := tick]
           node_list[nodes, on = c('id', 'tick'),    
                     strategy := i.strategy]      # store attributes 
@@ -251,42 +262,39 @@ one_run <- function(        # reading in row of values in sequence from combo
             comp[agent == "j", strategy == 0])  {   # and agent_jj is a defector
           network[comp[agent == "i", id],           # agent_ii severs the tie 
                   comp[agent == "j", id]] <- FALSE  # noting this is regardless of utility diff!
-          
-          ## 22/06/22 - past Elle, you dumbO these are NOT directed ties...
-          ## so need to update for both rows!
-          
-          ## 22/06/22 - changes so that row j is updated as well 
+  
+          ## 22/06/22 - not directed ties,  change so that row j is updated as well 
           network[comp[agent == "j", id],           # agent_jj also needs to sever the tie... 
                   comp[agent == "i", id]] <- FALSE
-          
-          options <- setdiff(seq(1, 100, 1),             # identify potential new partners
-                             c(comp[agent == "i", id],   # not self
+
+          # identify  new partner for agent_ii
+          options <- setdiff(seq(1, 100, 1),                 # identify potential new partners
+                             c(comp[agent == "i", id],       # not self
                                comp[agent == "j", id],       # agent_jj 
                                which(network[comp[agent == "i", id], ] == TRUE) # or current ties
                              ))
-          
           new_mate <- sample(options, 1)         
           network[comp[agent == "i", id],       # make new tie
                   new_mate] <- TRUE             # selected randomly from options
           network[new_mate, comp[agent == "i", id]] <- TRUE  
+          network[comp[agent == "i", id], new_mate] <- TRUE   ## 02/09/22 - needed to be reciprocated
           rm(new_mate)
           
           # update trackers
           tie_switched <- 1 
-          rm(copy, strat, cc, cd, dd)
           nodes <- agents_own[, c("id", "strategy")][, tick := tick]
           
-          # network_list[[tick + 1]] <- network    # store network
           #23/06/22 changing what network data is stored to limit data size
+          # network_list[[tick + 1]] <- network    # store network
           copy <- as.matrix(network) 
           strat <- nodes[, strategy]
           cc <- sum(copy[strat == 1, strat == 1])/2   # need to divide by 2
           cd <- sum(copy[strat == 1, strat == 0])  
           dd <- sum(copy[strat == 0, strat == 0])/2   # need to divide by 2
           network_list[[tick + 1]] <- list(cc, cd, dd)
-          
-          node_list[nodes, on = c('id', 'tick'),    
-                    strategy := i.strategy]           # store attributes 
+          rm(copy, strat, cc, cd, dd)
+          # fin changes 
+          node_list[nodes, on = c('id', 'tick'), strategy := i.strategy]    # store attributes        
           rm(options, comp, nodes)  # clean up
         } else {
           rm(comp)
@@ -386,8 +394,7 @@ one_run <- function(        # reading in row of values in sequence from combo
   save(data, file = name)
   
   # clean up 
-  rm(output, network_list, node_list,
-     # where, this, 
+  rm(output, network_list, node_list, # where, this, 
      name, data, c, R)
   
 }  # end run 
