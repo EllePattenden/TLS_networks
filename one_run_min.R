@@ -60,7 +60,7 @@ one_run <- function(        # reading in row of values in sequence from combo
     id = rep(seq(1, 100, 1), times = 1 + max_t),  # info about key attribute 
     strategy = NA,                                # = strategy
     tick = rep(c(0, 1:max_t), each= N)            # stored in node_list
-  )                                   # will remove rows with strategy == NA at end
+  ) # will remove rows with strategy == NA at end
   
   output <- setNames(     # main output from every tick 
     data.table(           # stored as data.table: 
@@ -87,7 +87,7 @@ one_run <- function(        # reading in row of values in sequence from combo
     NA, NA, NA, NA, NA, 
     agents_own[, sum(effort)],           # E_total with 99% cooperators 
     NA, NA, NA)]
-  network_list[[1]] <- network              # initial network
+  network_list[[1]] <- network           # initial network
   nodes <- agents_own[, c("id", "strategy")][, tick := 0]
   node_list[nodes, on = c('id', 'tick'), 
             strategy := i.strategy]         # initial strategies 
@@ -135,8 +135,8 @@ one_run <- function(        # reading in row of values in sequence from combo
       # loop through and find partners 
       for (d in defectors) {
         partners <- which(network[d, ] == TRUE)    # find partners 
-        n_coop <- nrow(agents_own[id %in% partners & 
-                                    strategy == 1,]) # count number cooperating
+        n_coop <- nrow(                            # count number cooperating
+          agents_own[id %in% partners & strategy == 1,]) 
         ostracism_i <- ostracism(                  # ostracism is then determined by the 
           h, t, g, (n_coop / length(partners))     # proportion of partners cooperating
         )
@@ -147,7 +147,7 @@ one_run <- function(        # reading in row of values in sequence from combo
         rm(util, partners, n_coop, ostracism_i)
       }
     } else { 
-      # if one strategy has dominated, record output and networks then end run
+      # if one strategy has dominated, record output and network then end run
       agents_own[strategy == 0, utility := payoff]
       strat_switched <- NA
       tie_switched <- NA 
@@ -183,27 +183,26 @@ one_run <- function(        # reading in row of values in sequence from combo
     # a social interaction that may culminate in strategy updating takes place
     agent_i <- agents_own[
       sample(nrow(agents_own), 1),   # randomly select focal agent i
-      .(id, strategy, utility)       # record their id, strategy, utility
-    ][, agent := "i"               # and add an identifier
+      .(id, strategy, utility)][     # record their id, strategy, utility
+        , agent := "i"               # and add an identifier
     ]               
-    if ( length(which(network[agent_i[, id], ] == TRUE)) != 0) { # if agent_i has ties
+    if (length(which(network[agent_i[, id], ] == TRUE)) != 0) { # if agent_i has ties
       agent_j <- agents_own[         # randomly select their social partner, agent_j
         sample(which(network[agent_i[, id], ] == TRUE), 1),
         .(id, strategy, utility)     # record " " 
       ][, agent := "j"               # and add identifier
       ]
       comp <- rbind(agent_i, agent_j)  
-      rm(agent_i, agent_j)
-      # agent i evaluates their utility
-      if (comp[agent == "i", strategy] !=    # but only if strats differ
-          comp[agent == "j", strategy]) {  
-        utility_diff <- fifelse(              # calculated as per Min et al. 
-          comp[agent == 'i', utility] <       # which is NOT consistent 
-            comp[agent == 'j', utility],      # with Shulter et al. (2016)
-          min(1, ((comp[agent == "j", utility] -      # something to come back to...
-                     comp[agent == "i", utility]) /  
-                    abs(comp[agent == "i", utility])), na.rm = TRUE),  
-          0)
+      rm(agent_i, agent_j)            
+      if (comp[agent == "i", strategy] !=   # agent_i and agent_j are playing 
+          comp[agent == "j", strategy]) {   # different streatgeies,
+        utility_diff <- fifelse(            # agent_i evaluates their utility difference  
+          comp[agent == 'i', utility] <              # calculated as per Min et al. 
+            comp[agent == 'j', utility],             # which is NOT consistent 
+          min(1, ((comp[agent == "j", utility] -     # with Shulter et al. (2016)
+                     comp[agent == "i", utility]) /  # something to come back to...
+                    abs(comp[agent == "i", utility])), 
+                    na.rm = TRUE), 0)
 
         # Di in Shulter et al. (2016) - actually normalised 
         #((comp[agent == "j", utility] - comp[agent == "i", utility]) /  
@@ -225,21 +224,20 @@ one_run <- function(        # reading in row of values in sequence from combo
           p_coop_i <- agents_own[, sum(strategy)] / N
           # 23/06/22 changing what network data is stored to limit data size        
           # network_list[[tick + 1]] <- network    # store network
-          copy <- as.matrix(network) 
-          strat <- nodes[, strategy]
-          cc <- sum(copy[strat == 1, strat == 1])/2   # need to divide by 2
-          cd <- sum(copy[strat == 1, strat == 0])  
-          dd <- sum(copy[strat == 0, strat == 0])/2   # need to divide by 2
-          network_list[[tick + 1]] <- list(cc, cd, dd)
-          rm(copy, strat, cc, cd, dd)
+            copy <- as.matrix(network) 
+            strat <- nodes[, strategy]
+            cc <- sum(copy[strat == 1, strat == 1])/2   # need to divide by 2
+            cd <- sum(copy[strat == 1, strat == 0])  
+            dd <- sum(copy[strat == 0, strat == 0])/2   # need to divide by 2
+            network_list[[tick + 1]] <- list(cc, cd, dd)
+            rm(copy, strat, cc, cd, dd)
           # fin changes for storage 
           nodes <- agents_own[, c("id", "strategy")][, tick := tick]
-          node_list[nodes, on = c('id', 'tick'),    
-                    strategy := i.strategy]      # store attributes 
-          rm(comp, nodes)  # clean up
+          node_list[nodes, on = c('id', 'tick'), strategy := i.strategy]      # store attributes 
+          rm(comp)  # clean up
         }
-      }
-    } else {
+      }          # end if statement comparing strategies 
+    } else {     # if agent_i doesn't have ties, they stay that way 
       rm(agent_i)
     }  # end strategy updating procedure 
     
