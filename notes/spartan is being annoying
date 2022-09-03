@@ -14,3 +14,13 @@
   * new tie is now reciprocated. 
   
 # 5. 10 runs errored out with a "Error in sample.int(length(x), size, replace, prob) : invalid first argument". 
+  * located with find . -type f | xargs grep -l  "sample" | xargs grep -n "chunk" 
+  * all are runs with degree = 90; working hypothesis is that the error arrises WHEN options = 0 in: 
+          # identify  new partner for agent_ii
+          options <- setdiff(seq(1, 100, 1),                 # identify potential new partners
+                             c(comp[agent == "i", id],       # not self
+                               comp[agent == "j", id],       # agent_jj 
+                               which(network[comp[agent == "i", id], ] == TRUE) # or current ties
+                             ))
+          new_mate <- sample(options, 1) 
+  * adding if statement to test, which can be removed as soon as we move away from this set of sims
