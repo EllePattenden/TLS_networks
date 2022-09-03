@@ -50,10 +50,10 @@ one_run <- function(        # reading in row of values in sequence from combo
     } 
   
   # initialise output storage 
-  network_list <- vector(     # note - will only store network data at t0 and in 
-    mode = "list",            # rounds where ties or strategies are updated 
-    length = max_t + 1        # info about ties stored as sparse adjacency matrices
-  )                           # in network_list 
+  network_list <- vector(     # note - will only store network data at t0 and  
+    mode = "list",            # in rounds where ties or strategies are updated 
+    length = max_t + 1        # info about ties stored as sparse adjacency 
+  )                           # matrices in network_list 
   # (will remove empty [[]] at end)
   
   node_list <- data.table(
@@ -78,7 +78,7 @@ one_run <- function(        # reading in row of values in sequence from combo
       "strat_updated",   # (10) strategy updated? 1 = true, 0 = false 
       "tie_updated"     # (11) tie updated? 1 = true, 0 = false
     ))
-  output[, names(output) := lapply(.SD, as.numeric)]   # make all cols. numeric
+  output[, names(output) := lapply(.SD, as.numeric)]   # make cols. numeric
   
   # store at  t0
   output[1 , names(output) := . (        # only relevant values
@@ -96,6 +96,8 @@ one_run <- function(        # reading in row of values in sequence from combo
   # ------------------------------- GO! ------------------------------------#
   
   for (tick in 1:max_t) { 
+    
+    # print(paste0("round ", tick))  # for debugging 
     
     # set up 
     strat_switched <- 0 
@@ -222,6 +224,7 @@ one_run <- function(        # reading in row of values in sequence from combo
           # update trackers 
           strat_switched <- 1
           p_coop_i <- agents_own[, sum(strategy)] / N
+          nodes <- agents_own[, c("id", "strategy")][, tick := tick]
           # 23/06/22 changing what network data is stored to limit data size        
           # network_list[[tick + 1]] <- network    # store network
             copy <- as.matrix(network) 
@@ -232,7 +235,6 @@ one_run <- function(        # reading in row of values in sequence from combo
             network_list[[tick + 1]] <- list(cc, cd, dd)
             rm(copy, strat, cc, cd, dd)
           # fin changes for storage 
-          nodes <- agents_own[, c("id", "strategy")][, tick := tick]
           node_list[nodes, on = c('id', 'tick'), strategy := i.strategy]      # store attributes 
           rm(comp)  # clean up
         }
@@ -271,33 +273,37 @@ one_run <- function(        # reading in row of values in sequence from combo
                                comp[agent == "j", id],       # agent_jj 
                                which(network[comp[agent == "i", id], ] == TRUE) # or current ties
                              ))
-          new_mate <- sample(options, 1)         
-          network[comp[agent == "i", id],       # make new tie
-                  new_mate] <- TRUE             # selected randomly from options
-          network[new_mate, comp[agent == "i", id]] <- TRUE  
-          network[comp[agent == "i", id], new_mate] <- TRUE   ## 02/09/22 - needed to be reciprocated
-          rm(new_mate)
           
-          # update trackers
-          tie_switched <- 1 
-          nodes <- agents_own[, c("id", "strategy")][, tick := tick]
-          
-          #23/06/22 changing what network data is stored to limit data size
-          # network_list[[tick + 1]] <- network    # store network
-          copy <- as.matrix(network) 
-          strat <- nodes[, strategy]
-          cc <- sum(copy[strat == 1, strat == 1])/2   # need to divide by 2
-          cd <- sum(copy[strat == 1, strat == 0])  
-          dd <- sum(copy[strat == 0, strat == 0])/2   # need to divide by 2
-          network_list[[tick + 1]] <- list(cc, cd, dd)
-          rm(copy, strat, cc, cd, dd)
-          # fin changes 
-          node_list[nodes, on = c('id', 'tick'), strategy := i.strategy]    # store attributes        
-          rm(options, comp, nodes)  # clean up
-        } else {
+          # 04/09/22 - avoid error for 90 runs where all cooperators are connected  
+          if (length(options) != 0 ) { 
+            new_mate <- sample(options, 1)         
+            network[comp[agent == "i", id],       # make new tie
+            new_mate] <- TRUE             # selected randomly from options
+            network[new_mate, comp[agent == "i", id]] <- TRUE  
+            network[comp[agent == "i", id], new_mate] <- TRUE   ## 02/09/22 - needed to be reciprocated
+            rm(new_mate)
+            # update trackers
+            tie_switched <- 1 
+            nodes <- agents_own[, c("id", "strategy")][, tick := tick]
+            #23/06/22 changing what network data is stored to limit data size
+            # network_list[[tick + 1]] <- network    # store network
+              copy <- as.matrix(network) 
+              strat <- nodes[, strategy]
+              cc <- sum(copy[strat == 1, strat == 1])/2   # need to divide by 2
+              cd <- sum(copy[strat == 1, strat == 0])  
+              dd <- sum(copy[strat == 0, strat == 0])/2   # need to divide by 2
+              network_list[[tick + 1]] <- list(cc, cd, dd)
+              rm(copy, strat, cc, cd, dd)     # fin changes 
+            node_list[nodes, on = c('id', 'tick'), strategy := i.strategy]    # store attributes 
+
+          } else { 
+            tie_switched <- 99999         # record instances where fully connected coop arises 
+          }
+          rm(options, comp)  # clean up
+        } else {     # if strategies for agent_ii == C & agent_jj == D 
           rm(comp)
         }
-      } else {
+      } else {       # if agent_ii doesn't have ties 
         rm(agent_ii)
       }
     }   # end tie updating procedure 
@@ -349,7 +355,7 @@ one_run <- function(        # reading in row of values in sequence from combo
     }
     
     rm(list = c("E_total", "total_product", "strat_switched", "tie_switched", 
-                "defectors", "p_coop_i"))
+                "defectors", "p_coop_i", "nodes"))
     
     
     if (tick == max_t) {
