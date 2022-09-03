@@ -24,3 +24,4 @@
                              ))
           new_mate <- sample(options, 1) 
   * adding if statement to test, which can be removed as soon as we move away from this set of sims
+          ** YES ^^ that was it! 
