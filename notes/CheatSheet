@@ -1,0 +1,6 @@
+# find jobs that timed out in refuting min sims
+find . -type f | xargs grep -l  "CANCEL" | xargs grep -n "beginning"     # will give you chunk and run 
+find . -type f | xargs grep -l  "CANCEL"                                 # file names 
+
+# count jobs running 
+squeue -u epattenden | wc -l 
