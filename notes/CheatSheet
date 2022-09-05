@@ -1,3 +1,6 @@
+# create text file with all jobs run per chunk
+find . -type f | xargs grep -n "beginning" | sort -o jobsrun.txt        
+
 # find jobs that timed out 
 find . -type f | xargs grep -l  "TIME LIMIT" | xargs grep -n "beginning" | sort   
 
