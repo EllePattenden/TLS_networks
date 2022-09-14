@@ -53,7 +53,7 @@ files <- list.files("/data/gpfs/projects/punim1783/output/floyds_mix/sim_results
                     full.names = TRUE      # need the file path to load
 )
 
-doing <- files[chunk + k]   # identify file to process 
+doing <- files[(chunk*2000) + k]   # identify file to process 
 data <- get(load(doing))    # load it into working environment 
 # there are 3 components to 'data' list:  
 output <- data[[1]]         # 1. summary stats for each tick
