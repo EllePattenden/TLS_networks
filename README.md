@@ -10,7 +10,7 @@ This builds upon work looking at the impact of static networks in this model, in
 The starting point is the lone study (to my knowledge) that incorporated network dynamics: Min, Y., Du, Y., & Jin, C. (2018). The effect of link rewiring on a coevolutionary common pool resource game. Physica A: Statistical Mechanics and its Applications, 512, 935-944. 
 - Problematic for reasons outlined in main_min.R; first job is clarifying results when the probability of tie rewiring is seperated from the probability of strategy updating. 
 - main_min.R recreates figure three from the paper, with rho impacting tie but not strategy updating. 
-- need to follow up with same parameter space with rho impacting probability of both, then prob of tie rewiring held constant and variable strategy updating (level above prob based on utility comparisons). 
+- ~~need to follow up with same parameter space with rho impacting probability of both, then prob of tie rewiring held constant and variable strategy updating (level above prob based on utility comparisons).~~ The probability of strategy updating is tied to the normalised payoff difference, so there is no need to do this. 
 
 After this, will (1) introduce different tie updating strategy that aligns with the risk hypothesis and (2) give ties a new purpose (monitoring + sanctioning) 
 
