@@ -21,9 +21,12 @@ rm(list = ls())                        # clear environment
 options(scipen=999)                    # go away scientific notation 
 igraph_options(sparsematrices = TRUE)  # work with sparse matrices
 
-chunk <- as.numeric(Sys.getenv("chunk"))     # processes 2000 runs at a time
-chunk <- chunk - 1                           # using 0 index 
-k <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))  # identify runs within ^ 
+
+args <- commandArgs(trailingOnly=TRUE)  # 2000 jobs run in p, each processing
+print(args)                             # 22 runs of the sim sequentially 
+chunk <- as.numeric(args)               # identifying chunk (1:22)
+k <- as.numeric(                        # identify k (1:2000) 
+  Sys.getenv("SLURM_ARRAY_TASK_ID"))     
 
 out <- data.table(rep = 0,               # output for ID + plotting 
                   ri = 0,                # resource inflow
@@ -50,11 +53,17 @@ prop_ties <- data.table(cc = rep(NaN, 100001),    # to store summary
 files <- list.files("/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/", 
                     recursive = FALSE,      # no sub folders 
                     pattern = ".Rdata",   
-                    full.names = TRUE      # need the file path to load
+                    full.names = TRUE       # need the file path to load
 )
 
-doing <- files[(chunk*2000) + k]   # identify file to process 
-data <- get(load(doing))    # load it into working environment 
+# identify file to process 
+doing <- files[ ((k - 1) * 22 + chunk )]       # (using 0 index)
+
+# read out for log
+print(paste0("chunk: ", chunk, " , k: ", k, ", doing file # : ", doing))
+
+# load it into working environment 
+data <- get(load(doing))    
 # there are 3 components to 'data' list:  
 output <- data[[1]]         # 1. summary stats for each tick
 network_list <- data[[2]]   # 2. t0 network + breakdown of C-C, C-D, D-D ties 
@@ -143,3 +152,4 @@ rm(name)
 name <- paste0(paste("summary", "degree", deg, "ri", ri, "rho", rho,"rep", rep,
                      sep = "_"), ".RData")
 save(out, prop_ties, prop_ties_time, prop_c_time, file = name)
+
