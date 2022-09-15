@@ -1,6 +1,8 @@
 # TLS_networks
 
-This repository contains a series of simulations that add social networks and network dynamics to Schlüter, M., Tavoni, A., & Levin, S. (2016). Robustness of norm-driven cooperation in the commons. Proceedings of the Royal Society B: Biological Sciences, 283(1822), 20152431 (https://royalsocietypublishing.org/doi/full/10.1098/rspb.2015.2431), an ABM of Tavoni, A., Schlüter, M., & Levin, S. (2012). The survival of the conformist: social pressure and renewable resource management. Journal of theoretical biology, 299, 152-161. (https://www.sciencedirect.com/science/article/abs/pii/S002251931100347X)
+This repository contains a series of simulations that add social networks and network dynamics to [Schlüter, M., Tavoni, A., & Levin, S. (2016). Robustness of norm-driven cooperation in the commons. Proceedings of the Royal Society B: Biological Sciences, 283(1822), 20152431] (https://royalsocietypublishing.org/doi/full/10.1098/rspb.2015.2431), an ABM of [Tavoni, A., Schlüter, M., & Levin, S. (2012). The survival of the conformist: social pressure and renewable resource management. Journal of theoretical biology, 299, 152-161.](https://www.sciencedirect.com/science/article/abs/pii/S002251931100347X)
+
+The goal of these simulations is to explore the power and pitfalls of ["link reciprocity"](https://yins.yale.edu/illustrative-projects/social-networks-can-be-used-increase-human-cooperation) in common-pool resource games. I (Elle) am trying to make the argument that though this strategy for network dynamics "works" in games like the Prisoner's Dilemma, it is not particularly helpful in other contexts and may even constitute a social trap. 
 
 This builds upon work looking at the impact of static networks in this model, including: 
 - Chung, N. N., Chew, L. Y., & Lai, C. H. (2013). Influence of network structure on cooperative dynamics in coupled socio-ecological systems. EPL (Europhysics Letters), 104(2), 28003.
