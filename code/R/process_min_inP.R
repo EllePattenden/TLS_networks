@@ -90,9 +90,16 @@ print(                                                # read out for log
 # fill in more of out 
 output[, tick := .I - 1]                               # label time steps
 output <- na.omit(output, "prop_coop")                 # drop empties
-out[, 'ticked'] <- output[which.max(tick), tick]       # store final tick # 
 out[, 'f_prop_coop'] <- output[which.max(tick), 
                                prop_coop]              # final p_coop
+if (nrow(output) == 100001 | 
+    out[, 'f_prop_coop'] == 0 |                        # final/equi. tick #  
+    out[, 'f_prop_coop'] == 1) {
+    out[, 'ticked'] <- output[which.max(tick), tick]           
+ } else {
+    # find last tick where a strat. or tie changed 
+    out[, 'ticked'] <- last(output[strat_updated == 1 | tie_updated == 1, tick])
+  }
 out[, 'av_prop_coop'] <- sum(output[-1,"prop_coop"]) / 
   output[which.max(tick), tick]                        # av_p_coop
 out[, 'sd_prop_coop'] <- output[-1, sd(prop_coop)]     # sd_p_coop
@@ -100,6 +107,7 @@ out[, 'num_tie_swaps'] <- sum(output[tie_updated == 1, # count tie swaps
                                      tie_updated])
 out[, 'num_strat_swaps'] <- sum(output[strat_updated == 1, 
                                        strat_updated]) # count stat swaps
+
 
 # process networks
 start <- as.matrix(network_list[[1]])         # get initial network 
