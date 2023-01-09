@@ -20,8 +20,10 @@ Cause of error identified and corrected.
 Need to re-run reps that previously produced ^ (more than list above, they were from the test batch)
 find . -type f | xargs grep -l  "Error in if (" | xargs grep -n "run #"
 
-
-
-
+#09/01/23 
+Get list of timeouts
+cd [folder with logs]
+files=$(find . -type f | xargs grep -l "slurmstep")
+for f in $files | ; do sed "1q;d" $f ; done
 
 
