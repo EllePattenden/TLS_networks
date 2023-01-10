@@ -6,3 +6,9 @@ find . -type f | xargs grep -l  "TIME LIMIT" | xargs grep -n "beginning" | sort
 
 # count jobs running 
 squeue -u epattenden | wc -l 
+
+# Get list of timeouts as comma seperated list to cp into slurm script 
+cd [folder with logs]
+files=$(find . -type f | xargs grep -l "slurmstep" | sort)
+TMPFILE=$(for f in $files ; do sed "1q;d" $f | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/' | paste -sd, - ;  done)
+echo $(echo ${TMPFILE}) | tr ' ' ','
