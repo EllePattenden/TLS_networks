@@ -21,9 +21,9 @@ Need to re-run reps that previously produced ^ (more than list above, they were 
 find . -type f | xargs grep -l  "Error in if (" | xargs grep -n "run #"
 
 #09/01/23 
-Get list of timeouts
+Get list of timeouts as comma seperated list to cp into slurm script 
 cd [folder with logs]
-files=$(find . -type f | xargs grep -l "slurmstep")
+files=$(find . -type f | xargs grep -l "slurmstep" | sort)
 TMPFILE=$(for f in $files ; do sed "1q;d" $f | sed -e 's/.*[^0-9]\([0-9]\+\)[^0-9]*$/\1/' | paste -sd, - ;  done)
 echo $(echo ${TMPFILE}) | tr ' ' ','
 
