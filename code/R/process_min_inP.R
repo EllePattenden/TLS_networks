@@ -33,14 +33,17 @@ out <- data.table(rep = 0,               # output for ID + plotting
                   rho = 0,               # prob. strategy updating
                   degree = 0,            # average k: 15 or 90 
                   f_prop_coop = 0,       # final proportion of cooperators
-                  ticked = 0,            # when the run ended
+                  ticked = 0,            # when the run ended   
+                                           # 26/01/23 - now accurate for runs where stoppping rule was applied!  
                   av_prop_coop = 0,      # mean prop coop. over the run
                   sd_prop_coop = 0,      # sd of ^ 
                   num_tie_swaps = 0,     # tally times ties swapped
-                  num_strat_swaps = 0,    # tally times strategies swapped,
+                  num_strat_swaps = 0,   # tally times strategies swapped,
                   final_CC = 0,          # proportion C-C ties at t_fin
                   final_CD = 0,          # proportion C-D ties at t_fin
-                  final_DD = 0           # proportion D-D ties at t_fin
+                  final_DD = 0,          # proportion D-D ties at t_fin
+                  num_strat_path_entered = 0      # 26/01/23 tally times strat swap path entered 
+                                                  # only relevant for the actually_replicating min runs! 
                   )
 
 prop_ties <- data.table(cc = rep(NaN, 100001),    # to store summary
@@ -50,7 +53,9 @@ prop_ties <- data.table(cc = rep(NaN, 100001),    # to store summary
 
 # ------------------------------ Get Data ------------------------------------#
 
-files <- list.files("/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/", 
+files <- list.files(
+  # "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/toreproducemin/",
+  "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/",                     # for redoing the rho sep runs 
                     recursive = FALSE,      # no sub folders 
                     pattern = ".Rdata",   
                     full.names = TRUE       # need the file path to load
@@ -59,7 +64,7 @@ files <- list.files("/data/gpfs/projects/punim1783/output/floyds_mix/sim_results
 # identify file to process 
 doing <- files[ ((k - 1) * 22 + chunk )]       # (using 0 index)
 
-# read out for log
+# read out for log (debugging)
 print(paste0("chunk: ", chunk, " , k: ", k, ", doing file # : ", doing))
 
 # load it into working environment 
@@ -90,16 +95,9 @@ print(                                                # read out for log
 # fill in more of out 
 output[, tick := .I - 1]                               # label time steps
 output <- na.omit(output, "prop_coop")                 # drop empties
+out[, 'ticked'] <- output[which.max(tick), tick]       # store final tick # 
 out[, 'f_prop_coop'] <- output[which.max(tick), 
                                prop_coop]              # final p_coop
-if (nrow(output) == 100001 | 
-    out[, 'f_prop_coop'] == 0 |                        # final/equi. tick #  
-    out[, 'f_prop_coop'] == 1) {
-    out[, 'ticked'] <- output[which.max(tick), tick]           
- } else {
-    # find last tick where a strat. or tie changed 
-    out[, 'ticked'] <- last(output[strat_updated == 1 | tie_updated == 1, tick])
-  }
 out[, 'av_prop_coop'] <- sum(output[-1,"prop_coop"]) / 
   output[which.max(tick), tick]                        # av_p_coop
 out[, 'sd_prop_coop'] <- output[-1, sd(prop_coop)]     # sd_p_coop
@@ -108,6 +106,20 @@ out[, 'num_tie_swaps'] <- sum(output[tie_updated == 1, # count tie swaps
 out[, 'num_strat_swaps'] <- sum(output[strat_updated == 1, 
                                        strat_updated]) # count stat swaps
 
+# correct ticked for times when stopping rule was applied! 
+out[, 'ticked' := fifelse(
+  output[which.max(tick), tick] !=   
+  ( max(c(                                      # avoid numeric(0) 
+    tail(output[which(tie_updated == 1),tick]), 
+    tail(output[which(strat_updated == 1),tick]))) ), 
+  max(c(tail(output[which(tie_updated == 1),tick]), tail(output[which(strat_updated == 1),tick]))), 
+  ticked)
+]
+
+# count strat swap path enters (only relevant for actually_recplicating_min)
+# out[, 'num_strat_path_entered'] <- sum(output[strat_path_entered == 1, 
+#                                        strat_path_entered])              # too lazy to add in more args; comment out when 
+#                                                                          # re-doing the rho sep runs !!
 
 # process networks
 start <- as.matrix(network_list[[1]])         # get initial network 
@@ -136,7 +148,7 @@ out[, 'final_DD']  <- prop_ties[time ==  out[,ticked], dd]
 
 # store summary plots of:
 # 1. the proportion of tie types over time 
-prop_ties_time <- ggplot(prop_ties, aes(x = time)) + 
+prop_ties_time <- ggplot(prop_ties[dd < 1, ], aes(x = time)) +  
   geom_line(aes(y = cc), color = "green") + 
   geom_line(aes(y = cd), color = "orange") + 
   geom_line(aes(y = dd), color = "red") + 
@@ -160,4 +172,5 @@ rm(name)
 name <- paste0(paste("summary", "degree", deg, "ri", ri, "rho", rho,"rep", rep,
                      sep = "_"), ".RData")
 save(out, prop_ties, prop_ties_time, prop_c_time, file = name)
+
 
