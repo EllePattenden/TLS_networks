@@ -24,7 +24,8 @@ igraph_options(sparsematrices = TRUE)  # work with sparse matrices
 
 args <- commandArgs(trailingOnly=TRUE)  # 2000 jobs run in p, each processing
 print(args)                             # 22 runs of the sim sequentially 
-chunk <- as.numeric(args)               # identifying chunk (1:22)
+chunk <- as.numeric(args[1])               # identifying chunk (1:22)
+version <- args[2]
 k <- as.numeric(                        # identify k (1:2000) 
   Sys.getenv("SLURM_ARRAY_TASK_ID"))     
 
@@ -54,11 +55,14 @@ prop_ties <- data.table(cc = rep(NaN, 100001),    # to store summary
 # ------------------------------ Get Data ------------------------------------#
 
 files <- list.files(
-  # "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/toreproducemin/",
-  "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/",                     # for redoing the rho sep runs 
-                    recursive = FALSE,      # no sub folders 
-                    pattern = ".Rdata",   
-                    full.names = TRUE       # need the file path to load
+    if(version == "actually_rep") {
+        "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/toreproducemin/"
+    } else {
+        "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results"
+    }, 
+    recursive = FALSE,      # no sub folders 
+    pattern = ".Rdata",   
+    full.names = TRUE       # need the file path to load
 )
 
 # identify file to process 
@@ -116,10 +120,11 @@ out[, 'ticked' := fifelse(
   ticked)
 ]
 
-# count strat swap path enters (only relevant for actually_recplicating_min)
-# out[, 'num_strat_path_entered'] <- sum(output[strat_path_entered == 1, 
-#                                        strat_path_entered])              # too lazy to add in more args; comment out when 
-#                                                                          # re-doing the rho sep runs !!
+if(version == "actually_rep") {
+    # count strat swap path enters (only relevant for actually_recplicating_min)
+    out[, 'num_strat_path_entered'] <- sum(output[strat_path_entered == 1, 
+                                        strat_path_entered])             
+}
 
 # process networks
 start <- as.matrix(network_list[[1]])         # get initial network 
