@@ -26,6 +26,7 @@ args <- commandArgs(trailingOnly=TRUE)  # 2000 jobs run in p, each processing
 print(args)                             # 22 runs of the sim sequentially 
 chunk <- as.numeric(args[1])               # identifying chunk (1:22)
 version <- args[2]
+go <- args[3]
 k <- as.numeric(                        # identify k (1:2000) 
   Sys.getenv("SLURM_ARRAY_TASK_ID"))     
 
@@ -35,7 +36,8 @@ out <- data.table(rep = 0,               # output for ID + plotting
                   degree = 0,            # average k: 15 or 90 
                   f_prop_coop = 0,       # final proportion of cooperators
                   ticked = 0,            # when the run ended   
-                                           # 26/01/23 - now accurate for runs where stoppping rule was applied!  
+                                           # 26/01/23 - now accurate for runs 
+                                           # where stoppping rule was applied!  
                   av_prop_coop = 0,      # mean prop coop. over the run
                   sd_prop_coop = 0,      # sd of ^ 
                   num_tie_swaps = 0,     # tally times ties swapped
@@ -43,8 +45,8 @@ out <- data.table(rep = 0,               # output for ID + plotting
                   final_CC = 0,          # proportion C-C ties at t_fin
                   final_CD = 0,          # proportion C-D ties at t_fin
                   final_DD = 0,          # proportion D-D ties at t_fin
-                  num_strat_path_entered = 0      # 26/01/23 tally times strat swap path entered 
-                                                  # only relevant for the actually_replicating min runs! 
+                  num_strat_path_entered = 69696969    # 26/01/23 tally times strat swap path entered 
+                                                       # only relevant for the actually_replicating min runs! 
                   )
 
 prop_ties <- data.table(cc = rep(NaN, 100001),    # to store summary
@@ -54,12 +56,21 @@ prop_ties <- data.table(cc = rep(NaN, 100001),    # to store summary
 
 # ------------------------------ Get Data ------------------------------------#
 
+# should really be doing this in the slurm script but whatever... 
 files <- list.files(
-    if(version == "actually_rep") {
-        "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/toreproducemin/"
+  if(go == "r50") {
+    if (version == "actually_rep") {
+        "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/toreproducemin/R50/"
     } else {
-        "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results"
-    }, 
+        "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/R50/"
+    }
+  } else {
+    if(version == "actually_rep") {
+        "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/toreproducemin/" #"original"
+    } else {
+        "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results"    # "rho_sep" "original"
+    }
+  }, 
     recursive = FALSE,      # no sub folders 
     pattern = ".Rdata",   
     full.names = TRUE       # need the file path to load
@@ -87,7 +98,7 @@ rm(data, files)
 # get those XXs and store in out 
 ri <- str_match(doing, "RI_\\s*(.*?)\\s*_rho")[,2]
 out[, 'ri'] <- ri
-rho <- str_match(doing, "_rho_\\s*(.*?)\\s*_.R")[,2]
+rho <- str_match(doing, "_rho_\\s*(.*?)\\s*_.Rdat")[,2]
 out[, 'rho'] <- rho
 deg <- str_match(doing, "degree_\\s*(.*?)\\s*_RI")[,2]
 out[, 'degree'] <- deg
@@ -111,19 +122,29 @@ out[, 'num_strat_swaps'] <- sum(output[strat_updated == 1,
                                        strat_updated]) # count stat swaps
 
 # correct ticked for times when stopping rule was applied! 
-out[, 'ticked' := fifelse(
-  output[which.max(tick), tick] !=   
-  ( max(c(                                      # avoid numeric(0) 
-    tail(output[which(tie_updated == 1),tick]), 
-    tail(output[which(strat_updated == 1),tick]))) ), 
-  max(c(tail(output[which(tie_updated == 1),tick]), tail(output[which(strat_updated == 1),tick]))), 
-  ticked)
-]
+if (length(c(                                                # avoid error with numeric(0) 
+          tail(output[which(tie_updated == 1),tick], n=1),   # only occurs if neither a tie or strat was updated... 
+          tail(output[which(strat_updated == 1),tick], n=1)) # which is apparently a thing
+        ) > 0 ) {
+          out[, 'ticked' := fifelse(
+            output[which.max(tick), tick] !=   
+            (max(c(                                      # avoid error with numeric(0) 
+                  tail(output[which(tie_updated == 1),tick], n=1),
+                  tail(output[which(strat_updated == 1),tick], n=1))  
+            )),
+            (max(c(                                      # avoid error with numeric(0)  
+                  tail(output[which(tie_updated == 1),tick], n=1),
+                  tail(output[which(strat_updated == 1),tick], n=1)))
+            ),
+            ticked)
+            ]
+        }
 
 if(version == "actually_rep") {
     # count strat swap path enters (only relevant for actually_recplicating_min)
     out[, 'num_strat_path_entered'] <- sum(output[strat_path_entered == 1, 
-                                        strat_path_entered])             
+                                        strat_path_entered]) 
+    print(paste0("sanity check, here is the num_strat_path_entered!", out[, 'num_strat_path_entered']))            
 }
 
 # process networks
@@ -177,5 +198,4 @@ rm(name)
 name <- paste0(paste("summary", "degree", deg, "ri", ri, "rho", rho,"rep", rep,
                      sep = "_"), ".RData")
 save(out, prop_ties, prop_ties_time, prop_c_time, file = name)
-
 
