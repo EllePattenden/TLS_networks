@@ -13,7 +13,7 @@ The starting point is the lone study (to my knowledge) that incorporated network
 
 ![replicating_min_figure3](https://user-images.githubusercontent.com/48939952/215665702-96e44330-f34d-4dda-99f7-325acc7d92ca.png)
 
-The probability of strategy updating in Min et al. was influenced by this tradeoff, but in a less obvious way as it is also determined by the normalised payoff difference. 
+The probability of strategy updating in Min et al. was influenced by this tradeoff, but to a lesser degree, as it is also determined by the normalised payoff difference. This is clearest by comparing the proportion of runs with strategy updating (first series of plots below) and, especially, the proportion of runs with strategy updating *where strategy updating was possible* (second series of plots). 
   
 ![proportion_runs_strat_updating](https://user-images.githubusercontent.com/48939952/215663568-79150137-4008-4dbe-aea3-8fb25b2f038e.png)
 
