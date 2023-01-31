@@ -13,11 +13,16 @@ The starting point is the lone study (to my knowledge) that incorporated network
 
 ![replicating_min_figure3](https://user-images.githubusercontent.com/48939952/215610721-8095bab0-4e20-48ea-8f37-d6cd27384adf.png)
 
-- ~~need to follow up with same parameter space with rho impacting probability of both, then prob of tie rewiring held constant and variable strategy updating (level above prob based on utility comparisons).~~ The probability of strategy updating is tied to the normalised payoff difference, so there is no need to do this. 
+The probability of strategy updating in Min et al. was influenced by this tradeoff, but in a less direct way, as it is also determined by the normalised payoff difference. 
+  
+![proportion_runs_strat_updating](https://user-images.githubusercontent.com/48939952/215663568-79150137-4008-4dbe-aea3-8fb25b2f038e.png)
+
+[insert summary of dynamics before collapse into defector equilibrium around RI = 50 in <k> = 15 and RI ~53 in <k> = 90 ]   
 
 After this, will (1) introduce different tie updating strategy that aligns with the risk hypothesis and (2) give ties a new purpose (monitoring + sanctioning) 
 
-Floyd will be presenting some of this work...
+  
+Floyd presented some of this work... 
 
 ## SUNBELT 2022
 ### "Modelling the evolution of cooperation in social-ecological systems: do we need to incorporate network processes or is network structure sufficient?"
