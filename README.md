@@ -11,11 +11,13 @@ This builds upon work looking at the impact of static networks in this model, in
 
 The starting point is the lone study (to my knowledge) that incorporated network dynamics: Min, Y., Du, Y., & Jin, C. (2018). The effect of link rewiring on a coevolutionary common pool resource game. Physica A: Statistical Mechanics and its Applications, 512, 935-944. Some claims made in this paper are problematic, for reasons outlined in main_min.R (which may or may not be up to date). For example, and as illustrated below, the finding that "partner switching can stabilize the cooperation when the resource has high inflow or reproductivity" (top; a = <k> = 15 and b = <k> = 90) is driven by the decreasing probability of strategies being updated as the probability of partner switching increases. When the probability of tie rewiring is seperated from the probability of strategy updating (bottom pannel, rewiring probability ~ 1), the effect no longer holds...  
 
-![replicating_min_figure3](https://user-images.githubusercontent.com/48939952/215610721-8095bab0-4e20-48ea-8f37-d6cd27384adf.png)
+![replicating_min_figure3](https://user-images.githubusercontent.com/48939952/215665702-96e44330-f34d-4dda-99f7-325acc7d92ca.png)
 
-The probability of strategy updating in Min et al. was influenced by this tradeoff, but in a less direct way, as it is also determined by the normalised payoff difference. 
+The probability of strategy updating in Min et al. was influenced by this tradeoff, but in a less obvious way as it is also determined by the normalised payoff difference. 
   
 ![proportion_runs_strat_updating](https://user-images.githubusercontent.com/48939952/215663568-79150137-4008-4dbe-aea3-8fb25b2f038e.png)
+
+![prob_stratupdating_whenpossible](https://user-images.githubusercontent.com/48939952/215665343-d8117cb0-4312-48f7-b341-5499fc8e297a.png)
 
 [insert summary of dynamics before collapse into defector equilibrium around RI = 50 in <k> = 15 and RI ~53 in <k> = 90 ]   
 
