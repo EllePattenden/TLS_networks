@@ -12,11 +12,11 @@ for (a in 1:length(combo)) {
   combo[[a]][,"index" := .I]    # add index col, will indicate which runs 
 }                               # are missing at end. 
 
-finished.list <- list.files("/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/toreproducemin/", 
-                            recursive = FALSE,    # no sub folders 
-                            pattern = ".Rdata",   
-                            full.names = FALSE    # only need strings 
-)
+finished.list <- list.files("/data/gpfs/projects/punim1783/output/2023/raw_output/rho_sep/NIM/original", 
+                        recursive = FALSE,    # no sub folders 
+                        pattern = ".Rdata",   
+                        full.names = FALSE    # only need strings 
+                        )
 
 for (f in finished.list) {
   # Identify the run! 
@@ -26,8 +26,8 @@ for (f in finished.list) {
   Rho <- str_match(f, "_rho_\\s*(.*?)\\s*_.R")[,2]
   deg <- str_match(f, "degree_\\s*(.*?)\\s*_RI")[,2]
   rep <- str_match(f, "rep_\\s*(.*?)\\s*_degree")[,2]
-  
-  print(paste("degree", deg, "| ri", RI, "| rho", Rho,"| rep", rep, sep = " "))
+
+  print(paste("file #", match(f, finished.list),"degree", deg, "| ri", RI, "| rho", Rho,"| rep", rep, sep = " "))
   
   target <- 69696969
   out <- FALSE 
@@ -42,7 +42,7 @@ for (f in finished.list) {
         target <- row 
         #dat[replicate == rep & degree == deg & resource_inflow == RI & rho == Rho, index]
         combo[[a]] <- dat[index != target] # drop row using index col
-        print(paste0("chunk=", a, " row=", target))
+        #print(paste0("chunk=", a, " row=", target))
         out <- TRUE
       }
       #print(paste0("trying chunk", a))
@@ -50,14 +50,10 @@ for (f in finished.list) {
     }
   }
 }
-save(combo, file = "/data/gpfs/projects/punim1783/output/floyds_mix/sim_results/toreproducemin/actually_replicating_min_rerun.Rda")
+save(combo, file = "/data/gpfs/projects/punim1783/output/2023/raw_output/rho_sep/NIM/original/rerun.Rda")
 
 for (a in 1:length(combo)) { 
-  runs <- combo[[a]][,index]
-  print(paste0("chunk ", a, " runs: ", combo[[a]][,index]))
-  print("                       ")
+  print(gsub(" ", "", toString(dput(as.numeric(combo[[9]]$index))), fixed = TRUE))
 }
-
-
 
 
