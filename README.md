@@ -35,7 +35,7 @@ How do cooperative solutions to environmental social dilemmas evolve in populati
 
 ## MARCH 2023 
 
-Sanity checks, requested by Michael, indicate that the parameterisation in Min et al., is problematic for an additional reason. The resource inflow parameter, c, and density dependent depreciation factor, d, need to be the same for the resource dynamics to work as intended. It is unclear whether Min et al. misrepored their method or implemented this incorrectly. Either way, I fucked up again by following what they (said they) did. Models need to be re-run, but I'm going to refine the code before doing so. 
+Sanity checks, requested by Michael, indicate that the parameterisation in Min et al., is problematic for an additional reason. The resource inflow parameter, c, and density dependent depreciation factor, d, need to be the same for the resource dynamics to work as intended. It is unclear whether Min et al. misrepored their method or implemented this incorrectly. Either way, I made a mistake again by following what has been done previously. If this is to be used in my thesis, all of the models need to be re-run (which will take MONTHS) and I'm also going to have to refine the code before doing so. 
 
 
 
